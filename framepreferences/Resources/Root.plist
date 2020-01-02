@@ -29,14 +29,22 @@
 			<string>Respring</string>
 			<key>action</key>
 			<string>respring</string>
-			<!-- <key>PostNotification</key>
-			<string>com.Zerui.framepreferences.respring</string> -->
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Settings</string>
+			<string>SETTINGS (NO RESPRING)</string>
+			<key>footerText</key>
+			<string>Enable "Pause in Apps" to save battery.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Choose Video</string>
+			<key>action</key>
+			<string>presentFileSelector</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -49,17 +57,35 @@
 			<string>isMute</string>
 			<key>label</key>
 			<string>Mute</string>
+			<key>footerText</key>
+			<string>No respring needed.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSButtonCell</string>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.Zerui.framepreferences</string>
+			<key>key</key>
+			<string>pauseInApps</string>
 			<key>label</key>
-			<string>Choose Video</string>
-			<key>action</key>
-			<string>presentFileSelector</string>
+			<string>Pause in Apps</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Important</string>
+			<key>footerText</key>
+			<string>1. To prevent glitches, go to stock wallpaper settings > choose any DYNAMIC wallpaper > select SET BOTH.
+
+2. Frame will access the video at its original location, thus ensure that you do not delete or move the file.
+
+© Zerui Chen 2019</string>
 		</dict>
 	</array>
 	<key>title</key>
-	<string>Frame Settings</string>
+	<string>| Frame |</string>
 </dict>
 </plist>

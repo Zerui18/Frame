@@ -1,6 +1,6 @@
 include $(THEOS)/makefiles/common.mk
 
-ARCHS = arm64
+ARCHS = arm64 arm64e
 BUNDLE_NAME = framepreferences
 
 framepreferences_FILES = ZX2RootListController.m
