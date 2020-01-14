@@ -5,7 +5,7 @@ BUNDLE_NAME = framepreferences
 
 framepreferences_FILES = ZX2RootListController.m
 framepreferences_INSTALL_PATH = /Library/PreferenceBundles
-framepreferences_FRAMEWORKS = UIKit
+framepreferences_FRAMEWORKS = UIKit MobileCoreServices AVFoundation
 framepreferences_PRIVATE_FRAMEWORKS = Preferences
 framepreferences_CFLAGS = -fobjc-arc
 
