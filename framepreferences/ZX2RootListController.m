@@ -86,7 +86,7 @@
 
 	- (void) respring {
 		CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-		CFStringRef str = (__bridge CFStringRef)@"com.Zerui.framepreferences.respring";
+		CFStringRef str = (__bridge CFStringRef)@"com.ZX02.framepreferences.respring";
 		CFNotificationCenterPostNotification(center, str, nil, nil, YES);
 	}
 

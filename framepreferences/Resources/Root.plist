@@ -108,7 +108,7 @@
 			<key>label</key>
 			<string>Important</string>
 			<key>footerText</key>
-			<string>1. If you only want the video wallpaper on Lock Screen / Home Screen, Go to Settings>Wallpaper and set a different wallpaper for each screen, then come back and toggle the switch above. The sequence matters.
+			<string>1. If you only want the video wallpaper on Lock Screen / Home Screen, ensure that you have different system wallpapers set for them.
 
 © Zerui Chen 2019</string>
 		</dict>

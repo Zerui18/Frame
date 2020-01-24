@@ -1,5 +1,6 @@
 #import <AVFoundation/AVFoundation.h>
 #import <version.h>
+#import <substrate.h>
 #include "FBSystemService.h"
 
 // Globals
@@ -87,7 +88,7 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 			audioSession = [%c(AVAudioSession) sharedInstance];
 			[audioSession setCategory: AVAudioSessionCategoryPlayback withOptions: AVAudioSessionCategoryOptionMixWithOthers error: nil];
 			[audioSession setActive: YES withOptions: nil error: nil];
-			// load video url from preferences
+			// begin observing settings changes
 			[bundleDefaults addObserver: self forKeyPath: @"videoURL" options: NSKeyValueObservingOptionNew context: nil];
 			[bundleDefaults addObserver: self forKeyPath: @"isMute" options: NSKeyValueObservingOptionNew context: nil];
 			[bundleDefaults addObserver: self forKeyPath: @"pauseInApps" options: NSKeyValueObservingOptionNew context: nil];
@@ -176,7 +177,7 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 		// Custom enabledScreens setter.
 		- (void) setEnabledScreens: (NSString *) option {
 			_enabledScreens = option;
-			[NSNotificationCenter.defaultCenter postNotificationName: @"com.Zerui.Frame.PVC" object: nil userInfo: nil];
+			[NSNotificationCenter.defaultCenter postNotificationName: @"com.ZX02.Frame.PVC" object: nil userInfo: nil];
 		}
 
 		// Custom videoURL setter.
@@ -272,18 +273,19 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 		}
 	@end
 
+	@interface SBWallpaperController
+		+ (id)sharedInstance;
+		@property(retain, nonatomic) SBFWallpaperView *sharedWallpaperView;
+		@property(retain, nonatomic) SBFWallpaperView *homescreenWallpaperView;
+		@property(retain, nonatomic) SBFWallpaperView *lockscreenWallpaperView;
+	@end
+
 	void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * suppliedLayer) {
+		// Safety Check.
 		if (self == nil)
 			return;
 
-		// Determine if the user's currently on the lock screen.
-		BOOL isOnLockScreen;
-		for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-			if ([window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
-				isOnLockScreen = !window.hidden;
-				break;
-			}
-		}
+		SBWallpaperController *wpController = [%c(SBWallpaperController) sharedInstance];
 
 		// Setup Player.
 		WallPlayer *player = [%c(WallPlayer) shared];
@@ -293,33 +295,49 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 		if (playerLayer == nil)
 			return;
 
-		// Update playerLayer's visibility according to current preferences.
-		if ([player.enabledScreens isEqualToString: @"lockscreen"]) {
-			if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
-				playerLayer.hidden = NO;
+		// Categorise and apply for each case of setting.
+		if (![player.enabledScreens isEqualToString: @"both"]) {
+			// Alert user if they are using the same system wallpaper
+			// but they chose anything other than "both".
+			if (wpController.sharedWallpaperView == self) {
+				// Set playerLayer as visible.
+				playerLayer.hidden = false;
+
+				// Alert (only once)
+				static bool hasAlerted;
+				if (hasAlerted) return; 
+				UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
+												message: [NSString stringWithFormat: @"You have chosen for Frame to only display on %@, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect.", player.enabledScreens]
+												preferredStyle: UIAlertControllerStyleAlert];
+				[alertVC addAction: [UIAlertAction actionWithTitle: @"OK" style: UIAlertActionStyleDefault handler: nil]];
+				UIViewController *presenterVC = UIApplication.sharedApplication.keyWindow.rootViewController;
+				if (presenterVC != nil)
+					[presenterVC presentViewController: alertVC animated: true completion: nil], hasAlerted = true;
+				return;
 			}
-			else { // Else we are in +WallpaperWindow
-				// If on home screen, self.hidden indicates that this is a lockscreen view.
-				if (!isOnLockScreen)
-					playerLayer.hidden = !self.hidden;
-				else
-					playerLayer.hidden = self.hidden;
+			
+			// Further divide cases.
+			// In each case if self.window is coversheet window
+			// it's straightforward to determine .hidden.
+			if ([player.enabledScreens isEqualToString: @"lockscreen"]) { // lockscreen
+				if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
+					playerLayer.hidden = false;
+				}
+				else {
+					playerLayer.hidden = self != wpController.lockscreenWallpaperView;
+				}
 			}
-		}
-		else if ([player.enabledScreens isEqualToString: @"homescreen"]) {
-			if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
-				playerLayer.hidden = YES;
-			}
-			else { // Else we are in +WallpaperWindow
-				// If on home screen, self.hidden indicates that this is a lockscreen view.
-				if (!isOnLockScreen)
-					playerLayer.hidden = self.hidden;
-				else
-					playerLayer.hidden = !self.hidden;
+			else { // homescreen
+				if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
+					playerLayer.hidden = true;
+				}
+				else {
+					playerLayer.hidden = self != wpController.homescreenWallpaperView;
+				}
 			}
 		}
 		else {
-			playerLayer.hidden = NO;
+			playerLayer.hidden = false;
 		}
 
 		// Update contentView as the opposite of playerLayer.
@@ -339,7 +357,7 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 			}
 
 			SBFWallpaperView * __weak weakSelf = self;
-			[NSNotificationCenter.defaultCenter addObserverForName: @"com.Zerui.Frame.PVC" object: nil queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
+			[NSNotificationCenter.defaultCenter addObserverForName: @"com.ZX02.Frame.PVC" object: nil queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
 				if (weakSelf != nil)
 					updateComponentsVisibility(weakSelf, nil);
 			}];
@@ -384,67 +402,45 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 	@end
 
 	%hook SBWallpaperEffectView 
+
 		-(void) didMoveToWindow {
 			%orig;
+
 			// Repairs the reachability blur view when activated from the home screen.
 			if (!isInApp && [self.window isKindOfClass: [%c(SBReachabilityWindow) class]]) {
 				// Remove the stock blur view.
-				[self.subviews[0] removeFromSuperview];
+				self.subviews.firstObject &&
+					self.subviews.firstObject.hidden = true;
 				UIView *newBlurView;
 				if (@available(iOS 13.0, *))
 					newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleSystemUltraThinMaterial]];
 				else
-					newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleExtraLight]];
+					newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleRegular]];
 				newBlurView.frame = self.bounds;
 				[self addSubview: newBlurView];
 				return %orig;
 			}
-			// Do not apply blur view if this effect view is not meant for it.
+
+			// Only apply fix for the following cases:
 			// Wallpaper style 29 -> icon component blur
-			if (self.wallpaperStyle != 29)
+			// Wallpaper style 12 -> SBDockView's underlying blur (iOS <= 12)
+			if (self.wallpaperStyle != 29 && self.wallpaperStyle != 12)
 				return;
-			[self.blurView removeFromSuperview];
+			// Hide the stock blur effect render.
+			self.blurView &&
+				self.blurView.subviews.firstObject &&
+					self.blurView.subviews.firstObject.hidden = true;
+
 			UIView *newBlurView;
 			if (@available(iOS 13.0, *))
 				newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleSystemUltraThinMaterial]];
 			else
-				newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleExtraLight]];
-			newBlurView.frame = self.bounds;
-			[self addSubview: newBlurView];
-		}
-	%end
-
-	// Disable dynamic wallpaper's animations to improve performance.
-	@interface SBFBokehWallpaperView : UIView
-		-(void)_toggleCircleAnimations:(BOOL)arg1;
-	@end
-
-	@interface SBFProceduralWallpaperView : UIView
-		-(void)setContinuousColorSamplingEnabled:(BOOL)arg1 ;
-		-(void)setWallpaperAnimationEnabled:(BOOL)arg1 ;
-	@end
-
-	%hook SBFBokehWallpaperView
-		-(void) _screenDidUpdate {
-		}
-
-		-(void) _addBokehCircles: (long long) arg1 {
-		}
-	%end
-
-	%hook SBFProceduralWallpaperView
-		-(void) didMoveToWindow {
-			%orig;
-			[self setContinuousColorSamplingEnabled: NO];
-			[self setWallpaperAnimationEnabled: NO];
-		}
-
-		-(void) setContinuousColorSamplingEnabled: (BOOL) arg1 {
-			%orig(NO);
-		}
-
-		-(void) setWallpaperAnimationEnabled: (BOOL) arg1 {
-			%orig(NO);
+				newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleRegular]];
+			
+			// Add our blur view to self.blurView (system's fake blur).
+			newBlurView.frame = self.blurView.bounds;
+			newBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+			[self.blurView addSubview: newBlurView];
 		}
 	%end
 
@@ -455,6 +451,7 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 	@end
 
 	%hook SpringBoard
+
 		-(void) frontDisplayDidChange: (id) newDisplay {
 			%orig;
 			WallPlayer *player = [%c(WallPlayer) shared];
@@ -473,53 +470,119 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 
 	// Resume player whenever coversheet will be shown.
 	%hook CSCoverSheetViewController
-		-(void) viewWillAppear: (BOOL) animated {
-			%orig;
-			// Don't play if this is triggered on sleep
-			if (isAsleep)
-				return;
-			WallPlayer *player = [%c(WallPlayer) shared];
 
-			// Pause if player's only enabled on homescreen
-			if ([player.enabledScreens isEqualToString: @"homescreen"])
-				[player pause];
-			else
-				[player play];
+		// The cases for play/pause are divided into the will/did appear/disappear methods,
+		// to ensure that the wallpaper will begin playing as early as possible
+		// and stop playing as late as possible.
+
+		- (void) viewWillAppear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Ignore if this is triggered on sleep.
+			// Otherwise eagerly play.
+			if (!isAsleep) {
+				if (![player.enabledScreens isEqualToString: @"homescreen"])
+					[player play];
+			}
 		}
 
-		// When lock screen will disappear.
-		-(void) viewWillDisappear: (BOOL) animated {
+		- (void) viewDidAppear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Ignore if this is triggered on sleep.
+			// Otherwise eagerly play.
+			if (!isAsleep) {
+				if ([player.enabledScreens isEqualToString: @"homescreen"])
+					[player pause];
+			}
+		}
+
+		- (void) viewWillDisappear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Pause if player's only enabled on lockscreen.
+			if (![player.enabledScreens isEqualToString: @"lockscreen"]) {
+				// Respect pauseInApps.
+				if (!player.pauseInApps || !isInApp)
+					[player play];
+			}
+		}
+
+		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
 			WallPlayer *player = [%c(WallPlayer) shared];
 			// Pause if player's only enabled on lockscreen.
 			if ([player.enabledScreens isEqualToString: @"lockscreen"]) {
 				[player pause];
 			}
-			else {
+		}
+	%end
+
+	// Achieves the same effect as hooking CSCoverSheet, but on iOS <= 12.
+	%hook SBDashBoardViewController
+
+		// The cases for play/pause are divided into the will/did appear/disappear methods,
+		// to ensure that the wallpaper will begin playing as early as possible
+		// and stop playing as late as possible.
+
+		- (void) viewWillAppear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Ignore if this is triggered on sleep.
+			// Otherwise eagerly play.
+			if (!isAsleep) {
+				if (![player.enabledScreens isEqualToString: @"homescreen"])
+					[player play];
+			}
+		}
+
+		- (void) viewDidAppear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Ignore if this is triggered on sleep.
+			// Otherwise eagerly play.
+			if (!isAsleep) {
+				if ([player.enabledScreens isEqualToString: @"homescreen"])
+					[player pause];
+			}
+		}
+
+		- (void) viewWillDisappear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Pause if player's only enabled on lockscreen.
+			if (![player.enabledScreens isEqualToString: @"lockscreen"]) {
 				// Respect pauseInApps.
 				if (!player.pauseInApps || !isInApp)
 					[player play];
 			}
 		}
+
+		- (void) viewDidDisappear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Pause if player's only enabled on lockscreen.
+			if ([player.enabledScreens isEqualToString: @"lockscreen"]) {
+				[player pause];
+			}
+		}
 	%end
 
 	%hook SBScreenWakeAnimationController
-		// Pause player during sleep.
-		-(void) sleepForSource: (long long)arg1 target: (id)arg2 completion: (id)arg3 {
+
+		// Centralised control for play/pause corresponding to wake/sleep.
+		-(void) _startWakeAnimationsForWaking: (BOOL) isAwake animationSettings: (id) arg2 {
 			%orig;
-			isAsleep = YES;
+			isAsleep = !isAwake;
 			WallPlayer *player = [%c(WallPlayer) shared];
-			[player pause];
-		}
-		// Resume player when awake.
-		// Note that this does not overlap with when coversheet appears.
-		-(void) prepareToWakeForSource: (long long)arg1 timeAlpha: (double)arg2 statusBarAlpha: (double)arg3 target: (id)arg4 completion: (id)arg5 {
-			%orig;
-			isAsleep = NO;
-			WallPlayer *player = [%c(WallPlayer) shared];
-			// Don't play if player's only enabled on homescreen
-			if ([player.enabledScreens isEqualToString: @"homescreen"])	return;
-			[player play];
+			if (isAwake) {
+				// Don't play if player's only enabled on homescreen
+				if ([player.enabledScreens isEqualToString: @"homescreen"])	return;
+				[player play];
+			}
+			else {
+				[player pause];
+			}
 		}
 	%end
 
@@ -571,5 +634,5 @@ void notifyCallback(CFNotificationCenterRef center, void * observer, CFStringRef
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-	CFNotificationCenterAddObserver(center, nil, notifyCallback, CFSTR("com.Zerui.framepreferences.respring"), nil, nil);
+	CFNotificationCenterAddObserver(center, nil, notifyCallback, CFSTR("com.ZX02.framepreferences.respring"), nil, nil);
 }
