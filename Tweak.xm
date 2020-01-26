@@ -2,349 +2,80 @@
 #import <version.h>
 #import <substrate.h>
 #include "FBSystemService.h"
-
-// Globals
-bool isAsleep;
-bool isInApp;
-
-// UIView category to get subviews of specified class.
-@interface UIView (X)
-	- (NSArray<UIView *> *) subviewsOfClass: (Class) mClass;
-	- (UIView *) subviewOfClass: (Class) mClass;
-@end
-
-@implementation UIView (X)
-
-	// Gets an array of subviews of the specified class.
-	- (NSArray<UIView *> *) subviewsOfClass: (Class) mClass {
-		return [self.subviews filteredArrayUsingPredicate: [NSPredicate predicateWithBlock: ^BOOL(id view, NSDictionary *bindings) {
-			return [view isKindOfClass: mClass];
-		}]];
-	}
-
-	// Gets the first subview of the specified class.
-	- (UIView *) subviewOfClass: (Class) mClass {
-		return [self subviewsOfClass: mClass].firstObject;
-	}
-
-@end
-
-// Executes the provided block once on main thread.
-void dispatch_once_on_main_thread(dispatch_once_t *predicate,
-                                  dispatch_block_t block) {
-  if ([NSThread isMainThread]) {
-    dispatch_once(predicate, block);
-  } else {
-    if (DISPATCH_EXPECT(*predicate == 0L, NO)) {
-      dispatch_sync(dispatch_get_main_queue(), ^{
-        dispatch_once(predicate, block);
-      });
-    }
-  }
-}
+#include "SpringBoard.h"
+#include "Globals.h"
+#include "WallPlayer.h"
+#include "UIView+.h"
 
 // MARK: Main Tweak
-%group Tweak
-	// Logical container for the AVQueuePlayer used in this tweak.
-	// Manages a single instance of AVQueuePlayer that's controlled by the AVPlayerLooper.
-	// Adds AVPlayerLayer to the provided views.
-	@interface WallPlayer: NSObject {
-		NSUserDefaults *bundleDefaults;
-		AVAudioSession *audioSession;
-	}
 
-		@property(setter=setVideoURL:, nonatomic) NSURL *videoURL;
-		@property AVPlayerItem *playerItem;
-		@property AVQueuePlayer *player;
-		@property AVPlayerLooper *looper;
-		@property(setter=setPauseInApps:, nonatomic) BOOL pauseInApps;
-		@property(setter=setEnabledScreens:, nonatomic) NSString *enabledScreens;
+void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * suppliedLayer) {
+	// Safety Check.
+	if (self == nil)
+		return;
 
-	@end
+	SBWallpaperController *wpController = [%c(SBWallpaperController) sharedInstance];
 
-	@implementation WallPlayer
+	// Setup Player.
+	WallPlayer *player = [%c(WallPlayer) shared];
+	// Objc does not support coersion operator "??"
+	AVPlayerLayer *playerLayer = suppliedLayer != nil ? suppliedLayer : (AVPlayerLayer *) objc_getAssociatedObject(self, @selector(layoutSubviews));
 
-		// Shared singleton.
-		+ (id) shared {
-			static WallPlayer *shared = nil;
-			static dispatch_once_t onceToken;
-			dispatch_once_on_main_thread(&onceToken, ^{
-				shared = [[self alloc] init];
-			});
-			return shared;
-		}
+	if (playerLayer == nil)
+		return;
 
-		// Init.
-		- (id) init {
-			self = [super init];
-			// get bundle defaults
-			bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
-			// init player
-			self.player = [[AVQueuePlayer alloc] init];
-			if (@available(iOS 12.0, *)) {
-				self.player.preventsDisplaySleepDuringVideoPlayback = NO;
-			}
-			// set allow mixing
-			audioSession = [%c(AVAudioSession) sharedInstance];
-			[audioSession setCategory: AVAudioSessionCategoryPlayback withOptions: AVAudioSessionCategoryOptionMixWithOthers error: nil];
-			[audioSession setActive: YES withOptions: nil error: nil];
-			// begin observing settings changes
-			[bundleDefaults addObserver: self forKeyPath: @"videoURL" options: NSKeyValueObservingOptionNew context: nil];
-			[bundleDefaults addObserver: self forKeyPath: @"isMute" options: NSKeyValueObservingOptionNew context: nil];
-			[bundleDefaults addObserver: self forKeyPath: @"pauseInApps" options: NSKeyValueObservingOptionNew context: nil];
-			[bundleDefaults addObserver: self forKeyPath: @"enabledScreens" options: NSKeyValueObservingOptionNew context: nil];
-			return self;
-		}
-
-		// Retrieves and sets values from preferences.
-		- (void) loadPreferences {
-			NSArray<NSString *> *defaultsKeys = [bundleDefaults dictionaryRepresentation].allKeys;
-			self.videoURL = [bundleDefaults URLForKey: @"videoURL"];
-			if ([defaultsKeys containsObject: @"isMute"])
-				self.player.muted = [bundleDefaults boolForKey: @"isMute"];
-			else
-				self.player.muted = YES;
-			if ([defaultsKeys containsObject: @"pauseInApps"])
-				self.pauseInApps = [bundleDefaults boolForKey: @"pauseInApps"];
-			else 
-				self.pauseInApps = YES;
-			if ([defaultsKeys containsObject: @"enabledScreens"])
-				self.enabledScreens = [bundleDefaults stringForKey: @"enabledScreens"];
-			else
-				self.enabledScreens = @"both";
-		}
-
-		// Bundle defaults KVO.
-		- (void) observeValueForKeyPath: (NSString *)keyPath ofObject: (id)object change: (NSDictionary *)change context: (void *)context {
-			if ([keyPath isEqualToString: @"videoURL"]) {
-				// Getting the changed value as string and URLWithPath does not seem to work.
-				NSURL *newURL = [bundleDefaults URLForKey: @"videoURL"];
-				if (newURL == nil)
-					return;
-				// Check if the newURL is a child of SpringBoard's doc URL -> alr copied.
-				if ([newURL.URLByStandardizingPath.URLByResolvingSymlinksInPath.path hasPrefix: @"/var/mobile/Documents/com.ZX02.Frame/"]) {
-					self.videoURL = newURL;
-					return; // Already saved.
-				}
-				NSURL *permanentURL = [self getPermanentVideoURL: newURL];
-				if (permanentURL != nil) {
-					[bundleDefaults setURL: permanentURL forKey: @"videoURL"];
-				}
-			}
-			else if ([keyPath isEqualToString: @"isMute"]) {
-				BOOL newFlag = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
-				self.player.muted = newFlag;
-			}
-			else if ([keyPath isEqualToString: @"pauseInApps"]) {
-				BOOL newFlag = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
-				self.pauseInApps = newFlag;
-			}
-			else if ([keyPath isEqualToString: @"enabledScreens"]) {
-				NSString *option = (NSString *) [change valueForKey: NSKeyValueChangeNewKey];
-				self.enabledScreens = option;
-			}
-		}
-
-		// Moves the file to a permanent URL of the same extension and return it. Returns nil if move failed.
-		- (NSURL *) getPermanentVideoURL: (NSURL *) srcURL {
-			NSArray *paths = [[NSFileManager defaultManager] URLsForDirectory: NSDocumentDirectory inDomains: NSUserDomainMask];
-			NSURL *documentsURL = paths[0];
-
-			NSURL *frameFolder = [documentsURL URLByAppendingPathComponent: @"com.ZX02.Frame"];
-
-			// Remove folder if exists.
-			if ([NSFileManager.defaultManager fileExistsAtPath: frameFolder.path isDirectory: nil])
-				[NSFileManager.defaultManager removeItemAtURL: frameFolder error: nil];
-
-			// Create frame's folder.
-			if (![NSFileManager.defaultManager createDirectoryAtPath: frameFolder.path withIntermediateDirectories: YES attributes: nil error: nil])
-				return nil;
-			
-			// Get the extension of the original file.
-			NSString *ext = srcURL.pathExtension.lowercaseString;
-			
-			NSURL *newURL = [frameFolder URLByAppendingPathComponent: [NSString stringWithFormat: @"wallpaper.%@", ext]];
-
-			// Attempt to copy the tmp item to a permanent url.
-			NSError *err;
-			if ([NSFileManager.defaultManager copyItemAtPath: srcURL.path toPath: newURL.path error: &err]) {
-				return newURL;
-			}
-			NSLog(@"failed to copy wallpaper: %@", err);
-			return nil;
-		}
-
-		// Custom enabledScreens setter.
-		- (void) setEnabledScreens: (NSString *) option {
-			_enabledScreens = option;
-			[NSNotificationCenter.defaultCenter postNotificationName: @"com.ZX02.Frame.PVC" object: nil userInfo: nil];
-		}
-
-		// Custom videoURL setter.
-		- (void) setVideoURL: (NSURL *) url {
-			_videoURL = url;
-			[self loadVideo];
-		}
-
-		// Setup the player with the current videoURL.
-		- (void) loadVideo {
-			if (self.videoURL == nil)
-				return;
-			dispatch_async(dispatch_get_main_queue(), ^{
-				self.playerItem = [AVPlayerItem playerItemWithURL: self.videoURL];
-				self.looper = [AVPlayerLooper playerLooperWithPlayer: self.player templateItem: self.playerItem];
-				[self play];
-			});
-		}
-
-		// Add a playerLayer in the specified view's layer.
-		- (AVPlayerLayer *) addInView: (UIView *)superview {
-			AVPlayerLayer *playerLayer = [AVPlayerLayer playerLayerWithPlayer: self.player];
-			playerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
-			[superview.layer addSublayer: playerLayer];
-			playerLayer.frame = superview.bounds;
-			return playerLayer;
-		}
-
-		// Setter for pauseInApps.
-		- (void) setPauseInApps: (BOOL) flag {
-			_pauseInApps = flag;
-			// Only care if there's a fully initialized player & an app is opened.
-			if (self.looper != nil && isInApp) {
-				if (flag)
-					[self pause];
-				else
-					[self play];
-			}
-		}
-		
-		// Play.
-		- (void) play {
-			// Note: This does not restart the AVAudioSession, or so it appears
-			// After siri dismisses, non-mute player does not have sound.
-			[self.player play];
-		}
-		
-		// Pause.
-		- (void) pause {
-			// Global override point for pauseInApps.
-			if (!self.pauseInApps && isInApp) {
-				return;
-			}
-			[self.player pause];
-		}
-	@end
-
-
-	// Prevent the system from adding subviews to the wallpaper container view.
-	
-	// Class decls.
-	@interface SBFWallpaperView : UIView
-		- (void) updateComponentsVisibility: (AVPlayerLayer *) suppliedLayer;
-	@end
-
-	@interface CSCoverSheetViewController : UIViewController
-	@end
-
-	@interface SBCoverSheetPanelBackgroundContainerView : UIView
-	@end
-
-	@interface _SBWallpaperWindow : UIWindow
-	@end
-
-	@interface SBCoverSheetWindow : UIWindow
-	@end
-
-	@interface SBReachabilityWindow : UIWindow
-	@end
-
-	// Category for getting the parent view controller of the receiver view.
-	// https://stackoverflow.com/a/24590678
-	@interface UIView (mxcl)
-		- (UIViewController *) parentViewController;
-	@end
-
-	@implementation UIView (mxcl)
-		- (UIViewController *) parentViewController {
-			UIResponder *responder = self;
-			while ([responder isKindOfClass:[UIView class]])
-				responder = [responder nextResponder];
-			return (UIViewController *)responder;
-		}
-	@end
-
-	@interface SBWallpaperController
-		+ (id)sharedInstance;
-		@property(retain, nonatomic) SBFWallpaperView *sharedWallpaperView;
-		@property(retain, nonatomic) SBFWallpaperView *homescreenWallpaperView;
-		@property(retain, nonatomic) SBFWallpaperView *lockscreenWallpaperView;
-	@end
-
-	void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * suppliedLayer) {
-		// Safety Check.
-		if (self == nil)
-			return;
-
-		SBWallpaperController *wpController = [%c(SBWallpaperController) sharedInstance];
-
-		// Setup Player.
-		WallPlayer *player = [%c(WallPlayer) shared];
-		// Objc does not support coersion operator "??"
-		AVPlayerLayer *playerLayer = suppliedLayer != nil ? suppliedLayer : (AVPlayerLayer *) objc_getAssociatedObject(self, @selector(layoutSubviews));
-
-		if (playerLayer == nil)
-			return;
-
-		// Categorise and apply for each case of setting.
-		if (![player.enabledScreens isEqualToString: @"both"]) {
-			// Alert user if they are using the same system wallpaper
-			// but they chose anything other than "both".
-			if (wpController.sharedWallpaperView == self) {
-				// Set playerLayer as visible.
-				playerLayer.hidden = false;
-
-				// Alert (only once)
-				static bool hasAlerted;
-				if (hasAlerted) return; 
-				UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
-												message: [NSString stringWithFormat: @"You have chosen for Frame to only display on %@, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect.", player.enabledScreens]
-												preferredStyle: UIAlertControllerStyleAlert];
-				[alertVC addAction: [UIAlertAction actionWithTitle: @"OK" style: UIAlertActionStyleDefault handler: nil]];
-				UIViewController *presenterVC = UIApplication.sharedApplication.keyWindow.rootViewController;
-				if (presenterVC != nil)
-					[presenterVC presentViewController: alertVC animated: true completion: nil], hasAlerted = true;
-				return;
-			}
-			
-			// Further divide cases.
-			// In each case if self.window is coversheet window
-			// it's straightforward to determine .hidden.
-			if ([player.enabledScreens isEqualToString: @"lockscreen"]) { // lockscreen
-				if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
-					playerLayer.hidden = false;
-				}
-				else {
-					playerLayer.hidden = self != wpController.lockscreenWallpaperView;
-				}
-			}
-			else { // homescreen
-				if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
-					playerLayer.hidden = true;
-				}
-				else {
-					playerLayer.hidden = self != wpController.homescreenWallpaperView;
-				}
-			}
-		}
-		else {
+	// Categorise and apply for each case of setting.
+	if (![player.enabledScreens isEqualToString: @"both"]) {
+		// Alert user if they are using the same system wallpaper
+		// but they chose anything other than "both".
+		if (wpController.sharedWallpaperView == self) {
+			// Set playerLayer as visible.
 			playerLayer.hidden = false;
-		}
 
-		// Update contentView as the opposite of playerLayer.
-		UIView *contentView = MSHookIvar<UIView *>(self, "_contentView");
-		if (contentView != nil)
-			contentView.hidden = !playerLayer.hidden;
+			// Alert (only once)
+			static bool hasAlerted;
+			if (hasAlerted) return; 
+			UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
+											message: [NSString stringWithFormat: @"You have chosen for Frame to only display on %@, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect.", player.enabledScreens]
+											preferredStyle: UIAlertControllerStyleAlert];
+			[alertVC addAction: [UIAlertAction actionWithTitle: @"OK" style: UIAlertActionStyleDefault handler: nil]];
+			UIViewController *presenterVC = UIApplication.sharedApplication.keyWindow.rootViewController;
+			if (presenterVC != nil)
+				[presenterVC presentViewController: alertVC animated: true completion: nil], hasAlerted = true;
+			return;
+		}
+		
+		// Further divide cases.
+		// In each case if self.window is coversheet window
+		// it's straightforward to determine .hidden.
+		if ([player.enabledScreens isEqualToString: @"lockscreen"]) { // lockscreen
+			if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
+				playerLayer.hidden = false;
+			}
+			else {
+				playerLayer.hidden = self != wpController.lockscreenWallpaperView;
+			}
+		}
+		else { // homescreen
+			if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
+				playerLayer.hidden = true;
+			}
+			else {
+				playerLayer.hidden = self != wpController.homescreenWallpaperView;
+			}
+		}
 	}
+	else {
+		playerLayer.hidden = false;
+	}
+
+	// Update contentView as the opposite of playerLayer.
+	UIView *contentView = MSHookIvar<UIView *>(self, "_contentView");
+	if (contentView != nil)
+		contentView.hidden = !playerLayer.hidden;
+}
+
+%group Tweak
 
 	%hook SBFWallpaperView
 
@@ -396,10 +127,6 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 	// and using a snapshot of the wallpaper.
 	// The simplest way to adapt this to our video bg is to replace the stock view that renders the blurred image
 	// with an actual UIVisualEffectView
-	@interface SBWallpaperEffectView : UIView
-		@property (nonatomic,retain) UIView* blurView;
-		@property (assign,nonatomic) long long wallpaperStyle; 
-	@end
 
 	%hook SBWallpaperEffectView 
 
@@ -410,7 +137,7 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 			if (!isInApp && [self.window isKindOfClass: [%c(SBReachabilityWindow) class]]) {
 				// Remove the stock blur view.
 				self.subviews.firstObject &&
-					self.subviews.firstObject.hidden = true;
+					(self.subviews.firstObject.hidden = true);
 				UIView *newBlurView;
 				if (@available(iOS 13.0, *))
 					newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleSystemUltraThinMaterial]];
@@ -429,7 +156,7 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 			// Hide the stock blur effect render.
 			self.blurView &&
 				self.blurView.subviews.firstObject &&
-					self.blurView.subviews.firstObject.hidden = true;
+					(self.blurView.subviews.firstObject.hidden = true);
 
 			UIView *newBlurView;
 			if (@available(iOS 13.0, *))
@@ -447,23 +174,26 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 	// Coordinate the WallPlayer with SpringBoard.
 	// Pause player when an application opens.
 	// Resume player when the homescreen is shown.
-	@interface SpringBoard : NSObject
-	@end
 
 	%hook SpringBoard
 
 		-(void) frontDisplayDidChange: (id) newDisplay {
 			%orig;
 			WallPlayer *player = [%c(WallPlayer) shared];
-			if (newDisplay == nil) {
+			if (newDisplay != nil) {
+				// Only pause if we're entering an app and not just entering app-switcher.
+				if (!isInApp) {
+					// Entered app.
+					isInApp = YES;
+					[player pause];
+				}
+			}
+			else if (isInApp) {
+				// Left app.
 				isInApp = NO;
 				// Don't play if player's only enabled on lockscreen.
-				if ([player.enabledScreens isEqualToString: @"lockscreen"])	return;
-				[player play];
-			}
-			else {
-				isInApp = YES;
-				[player pause];
+				if (![player.enabledScreens isEqualToString: @"lockscreen"])
+					[player play];
 			}
 		}
 	%end
@@ -612,13 +342,48 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
 			[player play];
 		}
 	%end
+
+	// Fastest route yet found for users with the home gesture.
+	%hook SBHomeGesturePanGestureRecognizer
+		- (BOOL) _shouldBegin {
+			BOOL flag = %orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			if (flag && isInApp) {
+				isInApp = NO;
+				// Don't play if player's only enabled on lockscreen.
+				if (![player.enabledScreens isEqualToString: @"lockscreen"])
+					[player play];
+			}
+			return flag;
+		}
+	%end
+
+	// Fastest route yet found for all users.
+	%hook SBLayoutStateTransitionContext
+		- (id) initWithWorkspaceTransaction: (id) arg1 {
+			SBLayoutStateTransitionContext *s = %orig;
+			SBLayoutState *from = s.fromLayoutState;
+			SBLayoutState *to = s.toLayoutState;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			if (from.elements != nil && to.elements == nil) {
+				// Leaving an app.
+				if (isInApp) {
+					isInApp = NO;
+					// Don't play if player's only enabled on lockscreen.
+					if (![player.enabledScreens isEqualToString: @"lockscreen"])
+						[player play];
+				}
+			}
+			return s;
+		}
+	%end
 %end
 
 void notifyCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
 	[[%c(FBSystemService) sharedInstance] exitAndRelaunch:YES];
 }
 
-// main()
+// Main
 %ctor {
 	NSUserDefaults *bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
 
