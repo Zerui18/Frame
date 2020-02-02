@@ -55,3 +55,6 @@
 @property (nonatomic,readonly) SBLayoutState * fromLayoutState;
 @property (nonatomic,readonly) SBLayoutState * toLayoutState;    
 @end
+
+@interface SBFolderIconImageView : UIView
+@end

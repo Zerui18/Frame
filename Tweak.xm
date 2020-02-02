@@ -116,7 +116,20 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 			}
 
 			// Send playerLayer to front and match its frame to that of the current view.
-			[self.layer addSublayer: playerLayer];
+			// Note: for compatibility with SpringArtwork, we let SAViewController's view's layer stay atop :)
+			CALayer *saLayer;
+			for (UIView *view in self.subviews) {
+				if ([view.nextResponder isKindOfClass: [%c(SAViewController) class]]) {
+					saLayer = view.layer;
+					break;
+				}
+			}
+			
+			if (saLayer != nil)
+				[self.layer insertSublayer: playerLayer below: saLayer];
+			else
+				[self.layer addSublayer: playerLayer];
+
 			playerLayer.frame = self.bounds;
 		}
 
@@ -248,56 +261,6 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 		}
 	%end
 
-	// Achieves the same effect as hooking CSCoverSheet, but on iOS <= 12.
-	%hook SBDashBoardViewController
-
-		// The cases for play/pause are divided into the will/did appear/disappear methods,
-		// to ensure that the wallpaper will begin playing as early as possible
-		// and stop playing as late as possible.
-
-		- (void) viewWillAppear: (BOOL) animated {
-			%orig;
-			WallPlayer *player = [%c(WallPlayer) shared];
-			// Ignore if this is triggered on sleep.
-			// Otherwise eagerly play.
-			if (!isAsleep) {
-				if (![player.enabledScreens isEqualToString: @"homescreen"])
-					[player play];
-			}
-		}
-
-		- (void) viewDidAppear: (BOOL) animated {
-			%orig;
-			WallPlayer *player = [%c(WallPlayer) shared];
-			// Ignore if this is triggered on sleep.
-			// Otherwise eagerly play.
-			if (!isAsleep) {
-				if ([player.enabledScreens isEqualToString: @"homescreen"])
-					[player pause];
-			}
-		}
-
-		- (void) viewWillDisappear: (BOOL) animated {
-			%orig;
-			WallPlayer *player = [%c(WallPlayer) shared];
-			// Pause if player's only enabled on lockscreen.
-			if (![player.enabledScreens isEqualToString: @"lockscreen"]) {
-				// Respect pauseInApps.
-				if (!player.pauseInApps || !isInApp)
-					[player play];
-			}
-		}
-
-		- (void) viewDidDisappear: (BOOL) animated {
-			%orig;
-			WallPlayer *player = [%c(WallPlayer) shared];
-			// Pause if player's only enabled on lockscreen.
-			if ([player.enabledScreens isEqualToString: @"lockscreen"]) {
-				[player pause];
-			}
-		}
-	%end
-
 	%hook SBScreenWakeAnimationController
 
 		// Centralised control for play/pause corresponding to wake/sleep.
@@ -379,6 +342,84 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 	%end
 %end
 
+// Group of iOS < 13 specific hooks.
+%group Fallback
+
+	// // Fix for the fixed folder backgrounds on iOS <= 12.
+	// %hook SBFolderIconImageView
+
+	// -(void) didMoveToWindow {
+	// 	%orig;
+
+	// 	UIView *oldBlurView = MSHookIvar<UIView *>(self, "_backgroundView");
+
+	// 	if (oldBlurView != nil) {
+	// 		UIView *newBlurView = [[ZXSBFakeBlurView alloc] initWithFrame: oldBlurView.frame];
+			
+	// 		// Add our blur view to self.blurView (system's fake blur).
+	// 		newBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+	// 		newBlurView.layer.masksToBounds = true;
+	// 		newBlurView.layer.cornerRadius = oldBlurView.layer.cornerRadius;
+			
+	// 		[self insertSubview: newBlurView belowSubview: oldBlurView];
+	// 		[oldBlurView removeFromSuperview];
+	// 	}
+	// }
+
+	// %end
+
+	// Achieves the same effect as hooking CSCoverSheet, but on iOS <= 12.
+	%hook SBDashBoardViewController
+
+		// The cases for play/pause are divided into the will/did appear/disappear methods,
+		// to ensure that the wallpaper will begin playing as early as possible
+		// and stop playing as late as possible.
+
+		- (void) viewWillAppear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Ignore if this is triggered on sleep.
+			// Otherwise eagerly play.
+			if (!isAsleep) {
+				if (![player.enabledScreens isEqualToString: @"homescreen"])
+					[player play];
+			}
+		}
+
+		- (void) viewDidAppear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Ignore if this is triggered on sleep.
+			// Otherwise eagerly play.
+			if (!isAsleep) {
+				if ([player.enabledScreens isEqualToString: @"homescreen"])
+					[player pause];
+			}
+		}
+
+		- (void) viewWillDisappear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Pause if player's only enabled on lockscreen.
+			if (![player.enabledScreens isEqualToString: @"lockscreen"]) {
+				// Respect pauseInApps.
+				if (!player.pauseInApps || !isInApp)
+					[player play];
+			}
+		}
+
+		- (void) viewDidDisappear: (BOOL) animated {
+			%orig;
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Pause if player's only enabled on lockscreen.
+			if ([player.enabledScreens isEqualToString: @"lockscreen"]) {
+				[player pause];
+			}
+		}
+	%end
+
+%end
+
 void notifyCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
 	[[%c(FBSystemService) sharedInstance] exitAndRelaunch:YES];
 }
@@ -395,6 +436,10 @@ void notifyCallback(CFNotificationCenterRef center, void * observer, CFStringRef
 	if (isEnabled) {
 		[WallPlayer.shared loadPreferences];
 		%init(Tweak);
+
+		if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
+			%init(Fallback);
+		}
 	}
 
 	// Listen for respring requests from pref.
