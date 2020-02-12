@@ -1,11 +1,11 @@
 #import <AVFoundation/AVFoundation.h>
 #import <version.h>
 #import <substrate.h>
-#include "FBSystemService.h"
-#include "SpringBoard.h"
-#include "Globals.h"
-#include "WallPlayer.h"
-#include "UIView+.h"
+#import "FBSystemService.h"
+#import "SpringBoard.h"
+#import "Globals.h"
+#import "WallPlayer.h"
+#import "UIView+.h"
 
 // MARK: Main Tweak
 
@@ -107,10 +107,14 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 			
 			// No existing playerLayer? Init
 			if (playerLayer == nil) {
+				// Determine if this view is on lockscreen.
+				SBWallpaperController *wpController = [%c(SBWallpaperController) sharedInstance];
+				bool isLockscreenView = [self.window isKindOfClass: [%c(SBCoverSheetWindow) class]] || (self == wpController.lockscreenWallpaperView);
+
 				// Setup Player.
 				WallPlayer *player = [%c(WallPlayer) shared];
-				playerLayer = [player addInView: self];
-				objc_setAssociatedObject(self, _cmd, playerLayer, OBJC_ASSOCIATION_ASSIGN);
+				playerLayer = [player addInView: self isLockscreen: isLockscreenView];
+				objc_setAssociatedObject(self, _cmd, playerLayer, OBJC_ASSOCIATION_RETAIN);
 
 				updateComponentsVisibility(self, playerLayer);
 			}
@@ -190,23 +194,31 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 
 	%hook SpringBoard
 
-		-(void) frontDisplayDidChange: (id) newDisplay {
+		- (void) frontDisplayDidChange: (id) newDisplay {
 			%orig;
 			WallPlayer *player = [%c(WallPlayer) shared];
 			if (newDisplay != nil) {
 				// Only pause if we're entering an app and not just entering app-switcher.
 				if (!isInApp) {
 					// Entered app.
-					isInApp = YES;
-					[player pause];
+					isInApp = true;
+					// Also ensure that
+					// if frame is enabled on lockscreen
+					// that the user's not on lock screen r/n
+					// as this method might be called after lock screen shows
+					// when the user enters an app and immediately pulls down
+					// the lock screen, and this method would cause the
+					// video playing on locksreen to pause.
+					if (player.pauseInApps && ([player.enabledScreens isEqualToString: @"homescreen"] || !isOnLockscreen))
+						[player pause];
 				}
 			}
 			else if (isInApp) {
 				// Left app.
-				isInApp = NO;
+				isInApp = false;
 				// Don't play if player's only enabled on lockscreen.
 				if (![player.enabledScreens isEqualToString: @"lockscreen"])
-					[player play];
+					[player playForScreen: @"homescreen"];
 			}
 		}
 	%end
@@ -220,12 +232,13 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
+			isOnLockscreen = true;
 			WallPlayer *player = [%c(WallPlayer) shared];
 			// Ignore if this is triggered on sleep.
 			// Otherwise eagerly play.
 			if (!isAsleep) {
 				if (![player.enabledScreens isEqualToString: @"homescreen"])
-					[player play];
+					[player playForScreen: @"lockscreen"];
 			}
 		}
 
@@ -233,32 +246,37 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 			%orig;
 			WallPlayer *player = [%c(WallPlayer) shared];
 			// Ignore if this is triggered on sleep.
-			// Otherwise eagerly play.
 			if (!isAsleep) {
 				if ([player.enabledScreens isEqualToString: @"homescreen"])
 					[player pause];
+				else
+					// Pause the primary unit if needed.
+					[player pausePriUnitIfNeeded];
 			}
 		}
 
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
 			WallPlayer *player = [%c(WallPlayer) shared];
-			// Pause if player's only enabled on lockscreen.
+			// Don't play if player's only enabled on lockscreen.
 			if (![player.enabledScreens isEqualToString: @"lockscreen"]) {
 				// Respect pauseInApps.
 				if (!player.pauseInApps || !isInApp)
-					[player play];
+					[player playForScreen: @"homescreen"];
 			}
 		}
 
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
+			isOnLockscreen = false;
 			WallPlayer *player = [%c(WallPlayer) shared];
 			// Pause if player's only enabled on lockscreen.
-			if ([player.enabledScreens isEqualToString: @"lockscreen"]) {
+			if ([player.enabledScreens isEqualToString: @"lockscreen"])
 				[player pause];
-			}
+			// Always attempt to pause the definitely non-visible secondary unit.
+			[player pauseSecUnit];
 		}
+
 	%end
 
 	%hook SBScreenWakeAnimationController
@@ -271,7 +289,7 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 			if (isAwake) {
 				// Don't play if player's only enabled on homescreen
 				if ([player.enabledScreens isEqualToString: @"homescreen"])	return;
-				[player play];
+				[player playForScreen: @"lockscreen"];
 			}
 			else {
 				[player pause];
@@ -284,25 +302,16 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 	%hook SBAssistantRootViewController
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
-			
-			// Determine if the user's currently on the lock screen.
-			BOOL isOnLockScreen;
-			for (UIWindow *window in [[UIApplication sharedApplication] windows]) {
-				if ([window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
-					isOnLockScreen = !window.hidden;
-					break;
-				}
-			}
 
 			WallPlayer *player = [%c(WallPlayer) shared];
 			// Do not play if player's not enabled on the current screen.
-			if (([player.enabledScreens isEqualToString: @"lockscreen"] && !isOnLockScreen)
-				|| ([player.enabledScreens isEqualToString: @"homescreen"] && isOnLockScreen)
+			if (([player.enabledScreens isEqualToString: @"lockscreen"] && !isOnLockscreen)
+				|| ([player.enabledScreens isEqualToString: @"homescreen"] && isOnLockscreen)
 				// or if pauseInApps doesn't allow it
 				|| (player.pauseInApps && isInApp)
 				)
 				return;
-			[player play];
+			[player playForScreen: isOnLockscreen ? @"lockscreen" : @"homescreen"];
 		}
 	%end
 
@@ -315,7 +324,7 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 				isInApp = NO;
 				// Don't play if player's only enabled on lockscreen.
 				if (![player.enabledScreens isEqualToString: @"lockscreen"])
-					[player play];
+					[player playForScreen: @"homescreen"];
 			}
 			return flag;
 		}
@@ -334,7 +343,7 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 					isInApp = NO;
 					// Don't play if player's only enabled on lockscreen.
 					if (![player.enabledScreens isEqualToString: @"lockscreen"])
-						[player play];
+						[player playForScreen: @"homescreen"];
 				}
 			}
 			return s;
@@ -377,12 +386,13 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
+			isOnLockscreen = true;
 			WallPlayer *player = [%c(WallPlayer) shared];
 			// Ignore if this is triggered on sleep.
 			// Otherwise eagerly play.
 			if (!isAsleep) {
 				if (![player.enabledScreens isEqualToString: @"homescreen"])
-					[player play];
+					[player playForScreen: @"lockscreen"];
 			}
 		}
 
@@ -390,32 +400,37 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 			%orig;
 			WallPlayer *player = [%c(WallPlayer) shared];
 			// Ignore if this is triggered on sleep.
-			// Otherwise eagerly play.
 			if (!isAsleep) {
 				if ([player.enabledScreens isEqualToString: @"homescreen"])
 					[player pause];
+				else
+					// Pause the primary unit if needed.
+					[player pausePriUnitIfNeeded];
 			}
 		}
 
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
 			WallPlayer *player = [%c(WallPlayer) shared];
-			// Pause if player's only enabled on lockscreen.
+			// Don't play if player's only enabled on lockscreen.
 			if (![player.enabledScreens isEqualToString: @"lockscreen"]) {
 				// Respect pauseInApps.
 				if (!player.pauseInApps || !isInApp)
-					[player play];
+					[player playForScreen: @"homescreen"];
 			}
 		}
 
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
+			isOnLockscreen = false;
 			WallPlayer *player = [%c(WallPlayer) shared];
 			// Pause if player's only enabled on lockscreen.
-			if ([player.enabledScreens isEqualToString: @"lockscreen"]) {
+			if ([player.enabledScreens isEqualToString: @"lockscreen"])
 				[player pause];
-			}
+			// Always attempt to pause the definitely non-visible secondary unit.
+			[player pauseSecUnit];
 		}
+
 	%end
 
 %end

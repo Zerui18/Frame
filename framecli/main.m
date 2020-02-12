@@ -3,7 +3,7 @@
 #include <Foundation/Foundation.h>
 
 int main(int argc, char *argv[], char *envp[]) {
-	const char *help = "Usage: framecli -s /path/to/video\nAllowed video formats: [.mp4, .m4a, .mov].";
+	const char *help = "Usage: framecli -s /path/to/video\nAllowed video formats: [.mp4, .m4a, .mov].\nNote: This tool only sets the primary video path.";
 	char *acceptedFormats[] = {".mp4", ".m4a", ".mov"};
 
 	// print help if not arg provided

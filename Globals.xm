@@ -1,7 +1,8 @@
 #include "Globals.h"
 
-bool isAsleep;
-bool isInApp;
+bool isAsleep = false;
+bool isInApp = false;
+bool isOnLockscreen = true;
 
 // Executes the provided block once on main thread.
 void dispatch_once_on_main_thread(dispatch_once_t *predicate,

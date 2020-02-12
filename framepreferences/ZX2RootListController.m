@@ -4,12 +4,13 @@
 
 @implementation ZX2RootListController
 
-	- (NSArray *)specifiers {
+	- (NSArray *) specifiers {
 		if (!_specifiers) {
-			_specifiers = [self loadSpecifiersFromPlistName:@"Root" target:self];
+			_specifiers = [self loadSpecifiersFromPlistName: @"Root" target:self];
 		}
-		// run my init
 		bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
+		// Also store a reference to the defaults to access globally.
+		sharedBundleDefaults = bundleDefaults;
 		return _specifiers;
 	}
 

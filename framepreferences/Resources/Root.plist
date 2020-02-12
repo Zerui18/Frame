@@ -64,9 +64,9 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>SETTINGS</string>
+			<string>VIDEOS</string>
 			<key>footerText</key>
-			<string>Enable "Pause in Apps" to save battery.</string>
+			<string>Please note that choosing a secondary video requires that you set a different wallpaper for each in the system settings.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -74,7 +74,15 @@
 			<key>label</key>
 			<string>Choose Video</string>
 			<key>action</key>
-			<string>handleChooseVideo</string>
+			<string>presentChooseVideoVC</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>SETTINGS</string>
+			<key>footerText</key>
+			<string>Enable "Pause in Apps" to save battery.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -87,8 +95,6 @@
 			<string>isMute</string>
 			<key>label</key>
 			<string>Mute</string>
-			<key>footerText</key>
-			<string>No respring needed.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -106,11 +112,9 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Important</string>
+			<string></string>
 			<key>footerText</key>
-			<string>1. If you only want the video wallpaper on Lock Screen / Home Screen, ensure that you have different system wallpapers set for them.
-
-© Zerui Chen 2019</string>
+			<string>© Zerui Chen 2019</string>
 		</dict>
 	</array>
 	<key>title</key>

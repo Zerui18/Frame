@@ -5,9 +5,10 @@ TARGET = iphone:clang:13.0:11.0
 SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
 BUNDLE_NAME = framepreferences
 
-framepreferences_FILES = ZX2RootListController.m
+framepreferences_LDFLAGS = -F./frameworks
+framepreferences_FILES = ZX2RootListController.m ZX2ChooseVideoViewController.m Globals.xm ZX2HookedView.m
 framepreferences_INSTALL_PATH = /Library/PreferenceBundles
-framepreferences_FRAMEWORKS = UIKit MobileCoreServices AVFoundation
+framepreferences_FRAMEWORKS = UIKit MobileCoreServices AVFoundation SDWebImage
 framepreferences_PRIVATE_FRAMEWORKS = Preferences
 framepreferences_CFLAGS = -fobjc-arc
 
