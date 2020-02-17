@@ -1,15 +1,25 @@
-#import "ZX2HookedView.h"
+#import <AVFoundation/AVFoundation.h>
+#import "ZX2WallpaperView.h"
 
-@interface ZX2ChooseVideoViewController : UIViewController {
+@interface ZX2ChooseVideoViewController : UIViewController <UIDocumentPickerDelegate, UINavigationControllerDelegate, UIImagePickerControllerDelegate> {
 
-  UILabel *lockscreenLabel;
-  UILabel *homescreenLabel;
+  UILabel *primaryLabel;
+  UILabel *secondaryLabel;
 
-  ZX2HookedView *lockscreenPreview;
-  ZX2HookedView *homescreenPreview;
+  ZX2WallpaperView *secondaryPreview;
+  ZX2WallpaperView *primaryPreview;
 
   UIButton *showWallpaperStoreButton;
 
+  AVPlayerLooper *primaryLooper;
+  AVPlayerLooper *secondaryLooper;
+
 }
+
+@property NSString *keyToSet;
+@property AVQueuePlayer *primaryPlayer;
+@property AVQueuePlayer *secondaryPlayer;
+
+- (void) chooseVideo;
 
 @end

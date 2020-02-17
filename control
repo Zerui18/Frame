@@ -1,7 +1,7 @@
 Package: com.zerui.frame
 Name: Frame
 Depends: mobilesubstrate,preferenceloader,firmware (>= 11.0)
-Version: 1.3.0
+Version: 1.4.0
 Architecture: iphoneos-arm
 Description: Enables video wallpaper for your lock/home screen.
 Maintainer: Zerui Chen

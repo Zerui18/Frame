@@ -61,30 +61,13 @@
 
     // Bundle defaults KVO.
     - (void) observeValueForKeyPath: (NSString *)keyPath ofObject: (id)object change: (NSDictionary *)change context: (void *)context {
-        if ([keyPath hasPrefix: @"videoURL"]) {
-
-            // Determine which unit this URL is meant for.
-            bool isPriVideo = [keyPath isEqualToString: @"videoURL"];
-            WallPlayerSubunit *playerUnit = isPriVideo ? priPlayerUnit : secPlayerUnit;
-
-            // Getting the changed value as string and URLWithPath does not seem to work.
+        if ([keyPath isEqualToString: @"videoURL"]) {
             NSURL *newURL = [bundleDefaults URLForKey: @"videoURL"];
-            if (newURL == nil) {
-                playerUnit.videoURL = nil;
-                return;
-            }
-
-            // Check if the newURL is a child of SpringBoard's doc URL -> alr copied.
-            if ([newURL.URLByStandardizingPath.URLByResolvingSymlinksInPath.path hasPrefix: @"/var/mobile/Documents/com.ZX02.Frame/"]) {
-                playerUnit.videoURL = newURL;
-                return; // Already saved.
-            }
-
-            // Otherwise copy the file to a permanent path and overwrite the preference.
-            NSURL *permanentURL = [self getPermanentVideoURL: newURL isSecondary: !isPriVideo];
-            if (permanentURL != nil) {
-                [bundleDefaults setURL: permanentURL forKey: keyPath];
-            }
+            [self updateVideoURL: newURL forUnit: priPlayerUnit withKey: keyPath];
+        }
+        else if ([keyPath isEqualToString: @"secVideoURL"]) {
+            NSURL *newURL = [bundleDefaults URLForKey: @"secVideoURL"];
+            [self updateVideoURL: newURL forUnit: secPlayerUnit withKey: keyPath];
         }
         else if ([keyPath isEqualToString: @"enabledScreens"]) {
             NSString *option = (NSString *) [change valueForKey: NSKeyValueChangeNewKey];
@@ -100,25 +83,44 @@
         }
     }
 
+    // Process the updated video url, specifying the unit it should update and the keyPath of this URL.
+    - (void) updateVideoURL: (NSURL *) newURL forUnit: (WallPlayerSubunit *) playerUnit withKey: (NSString *) keyPath {
+        // Check for nil.        
+        if (newURL == nil) {
+            playerUnit.videoURL = nil;
+            return;
+        }
+
+        // Check if the newURL is a child of SpringBoard's doc URL -> alr copied.
+        if ([newURL.URLByStandardizingPath.URLByResolvingSymlinksInPath.path hasPrefix: @"/var/mobile/Documents/com.ZX02.Frame/"]) {
+            playerUnit.videoURL = newURL;
+            return; // Already saved.
+        }
+
+        // Otherwise copy the file to a permanent path and overwrite the preference.
+        NSURL *permanentURL = [self getPermanentVideoURL: newURL isSecondary: [keyPath isEqualToString: @"secVideoURL"]];
+        if (permanentURL != nil) {
+            [bundleDefaults setURL: permanentURL forKey: keyPath];
+        }
+
+    }
+
+
     // Moves the file to a permanent URL of the same extension and return it. Returns nil if move failed.
     - (NSURL *) getPermanentVideoURL: (NSURL *) srcURL isSecondary: (bool) secondary {
-        NSArray *paths = [[NSFileManager defaultManager] URLsForDirectory: NSDocumentDirectory inDomains: NSUserDomainMask];
-        NSURL *documentsURL = paths[0];
-
-        NSURL *frameFolder = [documentsURL URLByAppendingPathComponent: @"com.ZX02.Frame"];
-
-        // Remove folder if exists.
-        if ([NSFileManager.defaultManager fileExistsAtPath: frameFolder.path isDirectory: nil])
-            [NSFileManager.defaultManager removeItemAtURL: frameFolder error: nil];
+        NSURL *frameFolder = [NSURL fileURLWithPath: @"/var/mobile/Documents/com.ZX02.Frame/"];
 
         // Create frame's folder.
-        if (![NSFileManager.defaultManager createDirectoryAtPath: frameFolder.path withIntermediateDirectories: YES attributes: nil error: nil])
-            return nil;
+        if (![NSFileManager.defaultManager fileExistsAtPath: frameFolder.path isDirectory: nil])
+            if (![NSFileManager.defaultManager createDirectoryAtPath: frameFolder.path withIntermediateDirectories: YES attributes: nil error: nil])
+                return nil;
         
         // Get the extension of the original file.
         NSString *ext = srcURL.pathExtension.lowercaseString;
         
         NSURL *newURL = [frameFolder URLByAppendingPathComponent: [NSString stringWithFormat: @"wallpaper%@.%@", secondary ? @".sec":@"", ext]];
+
+        [NSFileManager.defaultManager removeItemAtPath: newURL.path error: nil];
 
         // Attempt to copy the tmp item to a permanent url.
         NSError *err;
@@ -126,6 +128,18 @@
             return newURL;
         }
         return nil;
+    }
+
+    // Callback by darwin notifications from Settings.
+    - (void) videoChangedCallback: (bool) isPrimary {
+        if (isPrimary) {
+            NSURL *newURL = [bundleDefaults URLForKey: @"videoURL"];
+            [self updateVideoURL: newURL forUnit: priPlayerUnit withKey: @"videoURL"];
+        }
+        else {
+            NSURL *newURL = [bundleDefaults URLForKey: @"secVideoURL"];
+            [self updateVideoURL: newURL forUnit: secPlayerUnit withKey: @"secVideoURL"];
+        }
     }
 
     // Custom enabledScreens setter.
@@ -146,16 +160,18 @@
         [superview.layer addSublayer: playerLayer];
         playerLayer.frame = superview.bounds;
 
-        __weak AVPlayerLayer *weakPlayerLayer = playerLayer;
-
-        [NSNotificationCenter.defaultCenter addObserverForName: @"com.ZX02.Frame.SUE" object: nil queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
-            if (weakPlayerLayer == nil)
-                return;
-            // Stagger to prevent SpringBoard from going above the memory bandwidth limit.
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t) 2.0 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                weakPlayerLayer.player = self.secUnitEnabled ? secPlayerUnit.player : priPlayerUnit.player;
-            });
-        }];
+        // Listen for SUE notifications if it's a lockscreen view.
+        if (isLockscreen) {
+            __weak AVPlayerLayer *weakPlayerLayer = playerLayer;
+            [NSNotificationCenter.defaultCenter addObserverForName: @"com.ZX02.Frame.SUE" object: nil queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
+                if (weakPlayerLayer == nil)
+                    return;
+                // Stagger to prevent SpringBoard from going above the memory bandwidth limit.
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t) 2.0 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    weakPlayerLayer.player = self.secUnitEnabled ? secPlayerUnit.player : priPlayerUnit.player;
+                });
+            }];
+        }
 
         return playerLayer;
     }

@@ -23,12 +23,12 @@
     // Custom videoURL setter.
     - (void) setVideoURL: (NSURL *) url {
         _videoURL = url;
+        // clear queue player
+        self.looper = nil;
+        [self.player removeAllItems];
         
         if (_videoURL == nil) {
-          // remove looper & clear queue player
-          self.looper = nil;
-          [self.player removeAllItems];
-          return;
+            return;
         }
 
         // Else configure player & looper

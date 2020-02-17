@@ -72,9 +72,9 @@
 			<key>cell</key>
 			<string>PSButtonCell</string>
 			<key>label</key>
-			<string>Choose Video</string>
+			<string>Choose</string>
 			<key>action</key>
-			<string>presentChooseVideoVC</string>
+			<string>presentChooseVC</string>
 		</dict>
 		<dict>
 			<key>cell</key>

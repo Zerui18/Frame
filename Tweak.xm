@@ -435,12 +435,35 @@ void updateComponentsVisibility(SBFWallpaperView * self, AVPlayerLayer * supplie
 
 %end
 
-void notifyCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
-	[[%c(FBSystemService) sharedInstance] exitAndRelaunch:YES];
+void respringCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
+	[[%c(FBSystemService) sharedInstance] exitAndRelaunch: true];
+}
+
+void videoChangedCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
+	[WallPlayer.shared videoChangedCallback: true];
+}
+
+void secVideoChangedCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
+	[WallPlayer.shared videoChangedCallback: false];
+}
+
+// Fix permissions for users who've updated Frame.
+void createResourceFolder() {
+	NSURL *frameFolder = [NSURL fileURLWithPath: @"/var/mobile/Documents/com.ZX02.Frame/"];
+
+	// Create frame's folder.
+	if (![NSFileManager.defaultManager fileExistsAtPath: frameFolder.path isDirectory: nil])
+			if (![NSFileManager.defaultManager createDirectoryAtPath: frameFolder.path withIntermediateDirectories: YES attributes: nil error: nil])
+					return;
+  
+	[NSFileManager.defaultManager setAttributes: @{ NSFilePosixPermissions: @511 } ofItemAtPath: frameFolder.path error: nil];
 }
 
 // Main
 %ctor {
+	// Create the resource folder if necessary & update permissions.
+	createResourceFolder();
+
 	NSUserDefaults *bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
 
 	// Defaults to enabled (as shown in preferences) when PrefLoader has not written anything to user defaults.
@@ -459,5 +482,7 @@ void notifyCallback(CFNotificationCenterRef center, void * observer, CFStringRef
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-	CFNotificationCenterAddObserver(center, nil, notifyCallback, CFSTR("com.ZX02.framepreferences.respring"), nil, nil);
+	CFNotificationCenterAddObserver(center, nil, respringCallback, CFSTR("com.ZX02.framepreferences.respring"), nil, nil);
+	CFNotificationCenterAddObserver(center, nil, videoChangedCallback, CFSTR("com.ZX02.framepreferences.videoChanged"), nil, nil);
+	CFNotificationCenterAddObserver(center, nil, secVideoChangedCallback, CFSTR("com.ZX02.framepreferences.secVideoChanged"), nil, nil);
 }

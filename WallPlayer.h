@@ -24,5 +24,5 @@
 - (void) pauseSecUnit;
 - (void) pause;
 - (void) loadPreferences;
-
+- (void) videoChangedCallback: (bool) isPrimary;
 @end
