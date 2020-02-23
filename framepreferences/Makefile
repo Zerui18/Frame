@@ -1,11 +1,10 @@
 include $(THEOS)/makefiles/common.mk
 
-ARCHS = arm64 arm64e
 TARGET = iphone:clang:13.0:11.0
+ARCHS = arm64
 SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
 BUNDLE_NAME = framepreferences
 
-# framepreferences_LDFLAGS = -F ./frameworks
 framepreferences_FILES = ZX2RootListController.m Globals.m ZX2ChooseVideoViewController.m ZX2WallpaperView.m
 framepreferences_INSTALL_PATH = /Library/PreferenceBundles
 framepreferences_FRAMEWORKS = UIKit MobileCoreServices AVFoundation

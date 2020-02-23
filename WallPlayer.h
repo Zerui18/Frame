@@ -1,4 +1,4 @@
-#import "WallPlayerSubunit.h"
+#import <AVFoundation/AVFoundation.h>
 
 // Logical container for the AVQueuePlayer used in this tweak.
 // Manages a single instance of AVQueuePlayer that's controlled by the AVPlayerLooper.
@@ -7,22 +7,27 @@
 @interface WallPlayer : NSObject {
     NSUserDefaults *bundleDefaults;
     AVAudioSession *audioSession;
-    WallPlayerSubunit *priPlayerUnit;
-    WallPlayerSubunit *secPlayerUnit;
+
+    AVQueuePlayer *sharedPlayer;
+    AVQueuePlayer *lockscreenPlayer;
+    AVQueuePlayer *homescreenPlayer;
+
+    bool mutedLockscreen;
+    bool mutedHomescreen;
 }
 
-@property bool secUnitEnabled;
+// TODO: add custom setters to the following properties.
 @property bool pauseInApps;
-@property(setter=setEnabledScreens:, nonatomic) NSString *enabledScreens;
+
 
 + (id) shared;
+- (void) reloadPlayers;
 - (AVPlayerLayer *) addInView: (UIView *) superview isLockscreen: (bool) isLockscreen;
-- (void) setEnabledScreens: (NSString *) option;
-- (void) playForScreen: (NSString *) screen;
-- (void) secUnitEnabled: (bool) enabled;
-- (void) pausePriUnitIfNeeded;
-- (void) pauseSecUnit;
+- (void) playHomescreen;
+- (void) playLockscreen;
+- (void) pauseLockscreen;
+- (void) pauseHomescreen;
+- (void) pauseSharedPlayer;
 - (void) pause;
 - (void) loadPreferences;
-- (void) videoChangedCallback: (bool) isPrimary;
 @end

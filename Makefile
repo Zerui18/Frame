@@ -8,7 +8,7 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = frame
 
-frame_FILES = Tweak.xm UIView+.xm WallPlayer.xm Globals.xm WallPlayerSubunit.xm
+frame_FILES = Tweak.xm UIView+.m WallPlayer.xm Globals.xm AVPlayerLayer+Listen.xm
 frame_CFLAGS = -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/tweak.mk

@@ -17,3 +17,7 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
     }
   }
 }
+
+NSString *const kLockscreen = @"Lock";
+NSString *const kHomescreen = @"Home";
+NSString *const kBothscreens = @"Both";

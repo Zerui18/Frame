@@ -34,67 +34,17 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>DISPLAY ON</string>
-			<key>footerText</key>
-			<string>Please note that choosing "Lock Screen" or "Home Screen" requires that you set a different wallpaper for each in the system settings.</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSegmentCell</string>
-			<key>default</key>
-			<string>both</string>
-			<key>defaults</key>
-			<string>com.Zerui.framepreferences</string>
-			<key>key</key>
-			<string>enabledScreens</string>
-			<key>validValues</key>
-			<array>
-				<string>lockscreen</string>
-				<string>homescreen</string>
-				<string>both</string>
-			</array>
-			<key>validTitles</key>
-			<array>
-				<string>Lock Screen</string>
-				<string>Home Screen</string>
-				<string>Both</string>
-			</array>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>VIDEOS</string>
-			<key>footerText</key>
-			<string>Please note that choosing a secondary video requires that you set a different wallpaper for each in the system settings.</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSButtonCell</string>
-			<key>label</key>
-			<string>Choose</string>
-			<key>action</key>
-			<string>presentChooseVC</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
 			<string>SETTINGS</string>
 			<key>footerText</key>
 			<string>Enable "Pause in Apps" to save battery.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>default</key>
-			<true/>
-			<key>defaults</key>
-			<string>com.Zerui.framepreferences</string>
-			<key>key</key>
-			<string>isMute</string>
+			<string>PSButtonCell</string>
 			<key>label</key>
-			<string>Mute</string>
+			<string>Choose Videos</string>
+			<key>action</key>
+			<string>presentChooseVC</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -114,7 +64,7 @@
 			<key>label</key>
 			<string></string>
 			<key>footerText</key>
-			<string>© Zerui Chen 2019</string>
+			<string>© Zerui Chen 2019-2020</string>
 		</dict>
 	</array>
 	<key>title</key>

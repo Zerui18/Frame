@@ -10,6 +10,13 @@
 		}
 		bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
 		bundleDefaultsShared = bundleDefaults;
+		[bundleDefaultsShared registerDefaults: @{ @"mutedHomescreen" : @true, @"mutedLockscreen" : @true }];
+
+		// Load & cache icons which might come into use later.
+		NSBundle *bundle = [NSBundle bundleForClass: [ZX2ChooseVideoViewController class]];
+		mutedIcon = loadImage(bundle, @"muted");
+		unmutedIcon = loadImage(bundle, @"unmuted");
+		deleteIcon = loadImage(bundle, @"delete");
 		return _specifiers;
 	}
 

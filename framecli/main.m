@@ -2,6 +2,13 @@
 #include <unistd.h>
 #include <Foundation/Foundation.h>
 
+void notifyFrame() {
+	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
+	NSString *name = @"com.ZX02.framepreferences.videoChanged";
+	CFStringRef str = (__bridge CFStringRef) name;
+	CFNotificationCenterPostNotification(center, str, nil, nil, YES);
+}
+
 int main(int argc, char *argv[], char *envp[]) {
 	const char *help = "Usage: framecli -s /path/to/video\nAllowed video formats: [.mp4, .m4a, .mov].\nNote: This tool only sets the primary video path.";
 	char *acceptedFormats[] = {".mp4", ".m4a", ".mov"};
@@ -46,6 +53,7 @@ int main(int argc, char *argv[], char *envp[]) {
 				// proceed to set file in shared defaults
 				NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
 				[defaults setURL: fileURL forKey: @"videoURL"];
+				notifyFrame();
 
 				printf("Successfully set video to %s\n", filePath);
 

@@ -3,23 +3,28 @@
 
 @interface ZX2ChooseVideoViewController : UIViewController <UIDocumentPickerDelegate, UINavigationControllerDelegate, UIImagePickerControllerDelegate> {
 
-  UILabel *primaryLabel;
-  UILabel *secondaryLabel;
+  UILabel *lockscreenLabel;
+  UILabel *homescreenLabel;
 
-  ZX2WallpaperView *secondaryPreview;
-  ZX2WallpaperView *primaryPreview;
+  ZX2WallpaperView *lockscreenPreview;
+  ZX2WallpaperView *homescreenPreview;
 
-  UIButton *showWallpaperStoreButton;
+  UIButton *chooseWallpaperButton;
 
-  AVPlayerLooper *primaryLooper;
-  AVPlayerLooper *secondaryLooper;
+  AVPlayerLooper *lockscreenLooper;
+  AVPlayerLooper *homescreenLooper;
+  AVPlayerLooper *sharedLooper;
+
+  AVQueuePlayer *lockscreenPlayer;
+  AVQueuePlayer *homescreenPlayer;
+  AVQueuePlayer *sharedPlayer;
+
+  UIImage *mutedIcon;
+  UIImage *unmutedIcon;
+  UIImage *deleteIcon;
 
 }
 
-@property NSString *keyToSet;
-@property AVQueuePlayer *primaryPlayer;
-@property AVQueuePlayer *secondaryPlayer;
-
-- (void) chooseVideo;
+- (void) setVideoURL: (NSURL *) videoURLOri withKey: (NSString *) key forKeyPath: (NSString *) keyPath;
 
 @end
