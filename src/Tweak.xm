@@ -57,7 +57,7 @@ void const *playerLayerKey;
 												message: @"You have chosen different videos for lockscreen & homescreen, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect."
 												preferredStyle: UIAlertControllerStyleAlert];
 				[alertVC addAction: [UIAlertAction actionWithTitle: @"OK" style: UIAlertActionStyleDefault handler: nil]];
-				UIViewController *presenterVC = UIApplication.sharedApplication.keyWindow.rootViewController;
+				UIViewController *presenterVC = UIApplication.sharedApplication.windows.firstObject.rootViewController;
 				if (presenterVC != nil) {
 					[presenterVC presentViewController: alertVC animated: true completion: nil], hasAlerted = true;
 					hasAlerted = true;

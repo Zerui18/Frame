@@ -1,6 +1,7 @@
 #import "ZX2RootListController.h"
 #import "ZX2ChooseVideoViewController.h"
 #import "Globals.h"
+#import <framepreferences-Swift.h>
 
 @implementation ZX2RootListController
 
@@ -29,7 +30,7 @@
 	}
 
 	- (void) presentChooseVC {
-		UIViewController *vc = [[ZX2ChooseVideoViewController alloc] init];
+		UIViewController *vc = [[ZX2WallpaperListingViewController alloc] init];
 		[self.navigationController pushViewController: vc animated: true];
 	}
 

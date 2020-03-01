@@ -68,6 +68,8 @@ bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
     - (AVQueuePlayer *) createLoopedPlayerWithURL: (NSURL *) videoURL {
         // Init player, playerItem and looper.
         AVQueuePlayer *player = [[AVQueuePlayer alloc] init];
+        if (@available(iOS 12, *))
+            player.preventsDisplaySleepDuringVideoPlayback = false;
         AVPlayerItem *item = [AVPlayerItem playerItemWithURL: videoURL];
         AVPlayerLooper *looper = [AVPlayerLooper playerLooperWithPlayer: player templateItem: item];
 
