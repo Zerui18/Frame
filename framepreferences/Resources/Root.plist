@@ -9,6 +9,8 @@
 			<string>PSGroupCell</string>
 			<key>label</key>
 			<string>Master</string>
+			<key>footerText</key>
+			<string>Enable "Disable on LPM" to automatically disable Frame on Low Power Mode.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -24,11 +26,15 @@
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSButtonCell</string>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.Zerui.framepreferences</string>
+			<key>key</key>
+			<string>disableOnLPM</string>
 			<key>label</key>
-			<string>Respring</string>
-			<key>action</key>
-			<string>respring</string>
+			<string>Disable On LPM</string>
 		</dict>
 		<dict>
 			<key>cell</key>

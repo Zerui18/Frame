@@ -14,20 +14,22 @@
 
     bool mutedLockscreen;
     bool mutedHomescreen;
+
+    bool disableOnLPM;
 }
 
-// TODO: add custom setters to the following properties.
-@property bool pauseInApps;
-
+@property(setter=setPauseInApps:, nonatomic) bool pauseInApps;
+@property(setter=setEnabled:, nonatomic) bool enabled;
 
 + (id) shared;
 - (void) reloadPlayers;
-- (AVPlayerLayer *) addInView: (UIView *) superview isLockscreen: (bool) isLockscreen;
+- (AVPlayerLayer *) addInView: (SBFWallpaperView *) superview isLockscreen: (bool) isLockscreen;
 - (void) playHomescreen;
 - (void) playLockscreen;
 - (void) pauseLockscreen;
 - (void) pauseHomescreen;
 - (void) pauseSharedPlayer;
 - (void) pause;
-- (void) loadPreferences;
+- (bool) requiresDifferentSystemWallpapers;
+
 @end

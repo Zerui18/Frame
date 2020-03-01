@@ -2,7 +2,7 @@
 
 // Class decls.
 @interface SBFWallpaperView : UIView
-    - (void) updateComponentsVisibility: (AVPlayerLayer *) suppliedLayer;
+    @property (nonatomic, retain) UIView *contentView;
 @end
 
 @interface CSCoverSheetViewController : UIViewController

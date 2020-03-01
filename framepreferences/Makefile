@@ -1,7 +1,7 @@
 include $(THEOS)/makefiles/common.mk
 
 TARGET = iphone:clang:13.0:11.0
-ARCHS = arm64
+ARCHS = arm64 arm64e
 SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
 BUNDLE_NAME = framepreferences
 

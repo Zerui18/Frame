@@ -17,20 +17,23 @@ void const *screenKey;
 
   // Method to begin listening for player changed notifications.
   - (void) listenForPlayerChangedNotification {
-    __weak AVPlayerLayer *weakSelf;
     [NSNotificationCenter.defaultCenter addObserverForName: @"PlayerChanged" object: nil
         queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
-      AVPlayerLayer *strongSelf = weakSelf;
-      if (strongSelf == nil)
-        return;
 
       // Check if this notification is meant for this layer.
       NSString *screen = [notification.userInfo objectForKey: @"screen"];
       if ([screen isEqualToString: kBothscreens] || [screen isEqualToString: self.screen]) {
-        strongSelf.player = (AVPlayer *)[notification.userInfo objectForKey: @"player"];
+        
+        self.player = (AVPlayer *)[notification.userInfo objectForKey: @"player"];
+
+        // Update hidden.
+        self.opacity = self.player == nil ? 0.0 : 1.0;
       }
 
-      strongSelf.hidden = strongSelf.player == nil;
+      // // Hide the original wallpaper view if playerLayer is configured.
+      // UIView *originalWPView = (UIView *) [self valueForKey: @"originalWPView"];
+      // originalWPView.hidden = self.player != nil;
+
     }];
   }
 

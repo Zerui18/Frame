@@ -1,6 +1,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <version.h>
 #import <substrate.h>
+#include <dlfcn.h>
 #import "FBSystemService.h"
 #import "SpringBoard.h"
 #import "Globals.h"
@@ -9,67 +10,98 @@
 
 // MARK: Main Tweak
 
+void const *playerLayerKey;
+
 %group Tweak
+
+	// Helper function that sets up wallpaper player in the given wallpaperView.
+	void setupWallpaperPlayer(SBFWallpaperView *wallpaperView, bool isLockscreenView) {
+		// Attempts to retrieve associated AVPlayerLayer.
+		AVPlayerLayer *playerLayer = (AVPlayerLayer *) objc_getAssociatedObject(wallpaperView, &playerLayerKey);
+		
+		// No existing playerLayer? Init
+		if (playerLayer == nil) {
+
+			// Setup Player.
+			WallPlayer *player = [%c(WallPlayer) shared];
+			// Note: Don't add wallpaperView into .contentView as it's irregularly framed.
+			playerLayer = [player addInView: wallpaperView isLockscreen: isLockscreenView];
+			objc_setAssociatedObject(wallpaperView, &playerLayerKey, playerLayer, OBJC_ASSOCIATION_RETAIN);
+
+		}
+	}
+
+	%hook SBWallpaperController
+		// Point of setup for wallpaper players.
+		+ (id) sharedInstance {
+			SBWallpaperController *s = %orig;
+
+			// We don't need to ensure singular call as the setup function checks if the provided view has been configured.
+			if (s.lockscreenWallpaperView != nil && s.homescreenWallpaperView != nil) {
+				setupWallpaperPlayer(s.lockscreenWallpaperView, true);
+				setupWallpaperPlayer(s.homescreenWallpaperView, false);
+			}
+			else if (s.sharedWallpaperView != nil) {
+				setupWallpaperPlayer(s.sharedWallpaperView, false);
+			}
+
+			// We will also check if the user's configuration's erroneous.
+			static bool hasAlerted;
+ 			
+			WallPlayer *player = [%c(WallPlayer) shared];
+			if ([player requiresDifferentSystemWallpapers] && s.sharedWallpaperView != nil) {
+				// Alert (once).
+				if (hasAlerted) return s;
+				// Setup alertVC and present.
+				UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
+												message: @"You have chosen different videos for lockscreen & homescreen, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect."
+												preferredStyle: UIAlertControllerStyleAlert];
+				[alertVC addAction: [UIAlertAction actionWithTitle: @"OK" style: UIAlertActionStyleDefault handler: nil]];
+				UIViewController *presenterVC = UIApplication.sharedApplication.keyWindow.rootViewController;
+				if (presenterVC != nil) {
+					[presenterVC presentViewController: alertVC animated: true completion: nil], hasAlerted = true;
+					hasAlerted = true;
+				}
+			}
+
+			return s;
+		}
+	%end
 
 	%hook SBFWallpaperView
 
-		// // Begin monitoring for PVC notifications if necessary.
-		// - (void) didMoveToWindow {
-		// 	%orig;
-
-		// 	if (!([self.window isKindOfClass: [%c(_SBWallpaperWindow) class]] || [self.window isKindOfClass: [%c(SBCoverSheetWindow) class]])) {
-		// 		return;
-		// 	}
-
-		// 	SBFWallpaperView * __weak weakSelf = self;
-		// 	[NSNotificationCenter.defaultCenter addObserverForName: @"com.ZX02.Frame.PVC" object: nil queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
-		// 		if (weakSelf != nil)
-		// 			updateComponentsVisibility(weakSelf, nil);
-		// 	}];
-		// }
-
-		// Hook layoutSubviews to run our init once system has added its stock subviews.
 		- (void) layoutSubviews {
 			%orig;
 
-			if (!([self.window isKindOfClass: [%c(_SBWallpaperWindow) class]] || [self.window isKindOfClass: [%c(SBCoverSheetWindow) class]])) {
-				return;
+			// Insert point for coversheet window, which is not covered by the SBWallpaperController hook.
+			if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
+				setupWallpaperPlayer(self, true);
 			}
 
+			// General operation of re-positioning the playerLayer.
 			// Attempts to retrieve associated AVPlayerLayer.
-			AVPlayerLayer *playerLayer = (AVPlayerLayer *) objc_getAssociatedObject(self, _cmd);
-			
-			// No existing playerLayer? Init
-			if (playerLayer == nil) {
-				// Determine if this view is on lockscreen.
-				SBWallpaperController *wpController = [%c(SBWallpaperController) sharedInstance];
-				bool isLockscreenView = [self.window isKindOfClass: [%c(SBCoverSheetWindow) class]] || (self == wpController.lockscreenWallpaperView);
+			AVPlayerLayer *playerLayer = (AVPlayerLayer *) objc_getAssociatedObject(self, &playerLayerKey);
 
-				// Setup Player.
-				WallPlayer *player = [%c(WallPlayer) shared];
-				playerLayer = [player addInView: self isLockscreen: isLockscreenView];
-				objc_setAssociatedObject(self, _cmd, playerLayer, OBJC_ASSOCIATION_RETAIN);
-
-			}
-
-			// Send playerLayer to front and match its frame to that of the current view.
-			// Note: for compatibility with SpringArtwork, we let SAViewController's view's layer stay atop :)
-			CALayer *saLayer;
-			for (UIView *view in self.subviews) {
-				if ([view.nextResponder isKindOfClass: [%c(SAViewController) class]]) {
-					saLayer = view.layer;
-					break;
+			if (playerLayer != nil) {
+				// Send playerLayer to front and match its frame to that of the current view.
+				// Note: for compatibility with SpringArtwork, we let SAViewController's view's layer stay atop :)
+				CALayer *saLayer;
+				for (UIView *view in self.subviews) {
+					if ([view.nextResponder isKindOfClass: [%c(SAViewController) class]]) {
+						saLayer = view.layer;
+						break;
+					}
 				}
+				
+				if (saLayer != nil)
+					[self.layer insertSublayer: playerLayer below: saLayer];
+				else
+					[self.layer addSublayer: playerLayer];
+
+				playerLayer.frame = self.bounds;
 			}
-			
-			if (saLayer != nil)
-				[self.layer insertSublayer: playerLayer below: saLayer];
-			else
-				[self.layer addSublayer: playerLayer];
-
-			playerLayer.frame = self.bounds;
 		}
-
+	
 	%end
 
 	// Rework the blue effect of folders.
@@ -325,23 +357,18 @@ void createResourceFolder() {
 
 // Main
 %ctor {
+	NSString* libPath = @"/var/mobile/Documents/LookinServer.framework/LookinServer"; // @"/Users/zeruichen/Documents/LookinServer.framework/LookinServer";
+	dlopen([libPath UTF8String], RTLD_NOW);
+
 	// Create the resource folder if necessary & update permissions.
 	createResourceFolder();
 
-	NSUserDefaults *bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
+	%init(Tweak);
 
-	// Defaults to enabled (as shown in preferences) when PrefLoader has not written anything to user defaults.
-	NSArray<NSString *> *defaultsKeys = [bundleDefaults dictionaryRepresentation].allKeys;
-	BOOL isEnabled = YES;
-	if ([defaultsKeys containsObject: @"isEnabled"])
-		isEnabled = [bundleDefaults boolForKey: @"isEnabled"];
-	if (isEnabled) {
-		[WallPlayer.shared loadPreferences];
-		%init(Tweak);
-
-		if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
-			%init(Fallback);
-		}
+	NSLog(@"[Frame]: Initialized %@", WallPlayer.shared);
+		
+	if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
+		%init(Fallback);
 	}
 
 	// Listen for respring requests from pref.

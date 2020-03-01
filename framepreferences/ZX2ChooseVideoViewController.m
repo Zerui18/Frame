@@ -29,6 +29,7 @@
 		if (sharedVideoURL != nil) {
 			// Set only the shared player.
 			sharedPlayer = [[AVQueuePlayer alloc] init];
+			sharedPlayer.muted = true;
 			// Loop shared video.
 			AVPlayerItem *item = [AVPlayerItem playerItemWithURL: sharedVideoURL];
 			sharedLooper = [AVPlayerLooper playerLooperWithPlayer: sharedPlayer templateItem: item];
@@ -42,6 +43,7 @@
 
 			if (homescreenVideoURL != nil) {
 				homescreenPlayer = [[AVQueuePlayer alloc] init];
+				homescreenPlayer.muted = true;
 				AVPlayerItem *item = [AVPlayerItem playerItemWithURL: homescreenVideoURL];
 				homescreenLooper = [AVPlayerLooper playerLooperWithPlayer: homescreenPlayer templateItem: item];
 				[homescreenPlayer play];
@@ -49,6 +51,7 @@
 
 			if (lockscreenVideoURL != nil) {
 				lockscreenPlayer = [[AVQueuePlayer alloc] init];
+				lockscreenPlayer.muted = true;
 				AVPlayerItem *item = [AVPlayerItem playerItemWithURL: lockscreenVideoURL];
 				lockscreenLooper = [AVPlayerLooper playerLooperWithPlayer: lockscreenPlayer templateItem: item];
 				[lockscreenPlayer play];
@@ -86,6 +89,8 @@
 			chooseWallpaperButton.backgroundColor = UIColor.blueColor;
 		
 		[chooseWallpaperButton setTitle: @"Choose Video" forState: UIControlStateNormal];
+		[chooseWallpaperButton setTitleColor: UIColor.whiteColor forState: UIControlStateNormal];
+		[chooseWallpaperButton setTitleColor: UIColor.lightGrayColor forState: UIControlStateHighlighted];
 		chooseWallpaperButton.titleLabel.font = [UIFont systemFontOfSize: 24 weight: UIFontWeightMedium];
 		chooseWallpaperButton.layer.cornerRadius = 12;
 		[chooseWallpaperButton addTarget: self action: @selector(chooseVideo) forControlEvents: UIControlEventTouchUpInside];
@@ -99,8 +104,7 @@
 
 		[self setupLayout];
 
-		homescreenPreview.layer.cornerRadius = lockscreenPreview.layer.cornerRadius = 
-			min(homescreenPreview.bounds.size.width, homescreenPreview.bounds.size.height) * 0.13;
+		homescreenPreview.layer.cornerRadius = lockscreenPreview.layer.cornerRadius = 24;
   }
 
   - (void) setupLayout {
@@ -112,7 +116,7 @@
 		[self.view addSubview: homescreenLabel];
 		[self.view addSubview: lockscreenLabel];
 
-		[homescreenLabel.topAnchor constraintEqualToAnchor: self.view.topAnchor constant: 24].active = true;
+		[homescreenLabel.topAnchor constraintEqualToAnchor: self.view.safeAreaLayoutGuide.topAnchor constant: 24].active = true;
 		[lockscreenLabel.topAnchor constraintEqualToAnchor: homescreenLabel.topAnchor].active = true;
 
 		// Setup previews.
