@@ -1,6 +1,6 @@
 #import <AVFoundation/AVFoundation.h>
 
-@class ZX2ChooseVideoViewController;
+@class ZX2ChooseWallpaperViewController;
 
 // View representing lock/home screen preview & settings.
 @interface ZX2WallpaperView : UIView {
@@ -17,7 +17,7 @@
 // The keyPath in bundleDefaults that represents the current video.
 @property NSString *videoKeyPath;
 // The parent view controller.
-@property(assign) ZX2ChooseVideoViewController *parentVC;
+@property(assign) ZX2ChooseWallpaperViewController *parentVC;
 // Bool indicating whether this screen is muted.
 @property(getter=getMuted, setter=setMuted:, nonatomic) bool muted;
 

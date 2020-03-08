@@ -1,5 +1,5 @@
 #import "ZX2RootListController.h"
-#import "ZX2ChooseVideoViewController.h"
+#import "ZX2ChooseWallpaperViewController.h"
 #import "Globals.h"
 #import <framepreferences-Swift.h>
 
@@ -15,7 +15,7 @@
 		bundleDefaultsShared = bundleDefaults;
 
 		// Load & cache icons which might come into use later.
-		NSBundle *bundle = [NSBundle bundleForClass: [ZX2ChooseVideoViewController class]];
+		NSBundle *bundle = [NSBundle bundleForClass: [ZX2ChooseWallpaperViewController class]];
 		mutedIcon = loadImage(bundle, @"muted");
 		unmutedIcon = loadImage(bundle, @"unmuted");
 		deleteIcon = loadImage(bundle, @"delete");
@@ -30,8 +30,8 @@
 	}
 
 	- (void) presentChooseVC {
-		UIViewController *vc = [[ZX2WallpaperListingViewController alloc] init];
-		[self.navigationController pushViewController: vc animated: true];
+		PSViewController *vc = [[ZX2ChooseWallpaperViewController alloc] init];
+		[self pushController: vc animate: true];
 	}
 
 @end

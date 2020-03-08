@@ -21,3 +21,7 @@ UIImage *loadImage(NSBundle *bundle, NSString *name) {
 UIImage *mutedIcon;
 UIImage *unmutedIcon;
 UIImage *deleteIcon;
+
+NSString *const kLockscreen = @"Lockscreen";
+NSString *const kHomescreen = @"Homescreen";
+NSString *const kBothscreens = @"";

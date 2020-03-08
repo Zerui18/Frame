@@ -33,6 +33,12 @@ public struct ListingAPIResponse: Codable {
     
 }
 
+/// The english translation for the important category names.
+fileprivate let englishNames = ["最新" : "Latest", "推荐" : "Recommended", "景观" : "Landscapes", "动漫" : "Anime", "游戏" : "Games", "其它" : "Abstract"]
+
+/// The categories to be filtered out.
+fileprivate let filteredNames = ["小姐姐", "再淘一下", "公告"]
+
 /// Struct representing the api response of the root/index categories.
 public struct IndexAPIResponse: Codable {
     
@@ -40,6 +46,11 @@ public struct IndexAPIResponse: Codable {
     public struct Item: Codable {
         public let name: String
         let path: String
+
+        /// The property that should be accessed for the displayed name.
+        public var displayName: String {
+            return englishNames[name] ?? name
+        }
         
         /// The URL to this category's listing.
         public var url: URL? {
@@ -69,7 +80,7 @@ public struct IndexAPIResponse: Codable {
     }
     
     /// All categories.
-    public let items: [Item]
+    public private(set) var items: [Item]
     /// URL to the "all" category's listing.
     public let allURL: String
     
@@ -82,7 +93,9 @@ public struct IndexAPIResponse: Codable {
             }
             else {
                 do {
-                    completion(try JSONDecoder().decode(IndexAPIResponse.self, from: data!), nil)
+                    var response = try JSONDecoder().decode(IndexAPIResponse.self, from: data!)
+                    response.items.removeAll { filteredNames.contains($0.name) }
+                    completion(response, nil)
                 }
                 catch {
                     completion(nil, error)

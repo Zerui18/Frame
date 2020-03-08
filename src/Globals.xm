@@ -2,7 +2,7 @@
 
 bool isAsleep = false;
 bool isInApp = false;
-bool isOnLockscreen = true;
+bool isOnLockscreen = false;
 
 // Executes the provided block once on main thread.
 void dispatch_once_on_main_thread(dispatch_once_t *predicate,
@@ -18,6 +18,6 @@ void dispatch_once_on_main_thread(dispatch_once_t *predicate,
   }
 }
 
-NSString *const kLockscreen = @"Lock";
-NSString *const kHomescreen = @"Home";
-NSString *const kBothscreens = @"Both";
+NSString *const kLockscreen = @"Lockscreen";
+NSString *const kHomescreen = @"Homescreen";
+NSString *const kBothscreens = @"";

@@ -1,15 +1,14 @@
 include $(THEOS)/makefiles/common.mk
 
-TARGET = iphone:clang:13.0:13.0
 ARCHS = arm64 arm64e
 SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
 BUNDLE_NAME = framepreferences
 
 # manually add library search paths from toolchain
 # also use dead_strip linker option to prevent linking unnecessary code and causing error 
-framepreferences_LDFLAGS += -L/usr/lib/swift -dead_strip
+framepreferences_LDFLAGS += -L/usr/lib/swift -L./ -lwebpdecoder -dead_strip
 framepreferences_FRAMEWORKS = UIKit MobileCoreServices AVFoundation
-framepreferences_FILES = $(wildcard src/*m) $(wildcard Nuke/*.swift) $(wildcard src/*.swift)
+framepreferences_FILES = src/WebP/WebPDataDecoder.m $(wildcard src/Digger/*.swift) $(wildcard src/WebP/*.swift) $(wildcard src/*m) $(wildcard src/Nuke/*.swift) $(wildcard src/*.swift)
 framepreferences_INSTALL_PATH = /Library/PreferenceBundles
 framepreferences_PRIVATE_FRAMEWORKS = Preferences
 framepreferences_CFLAGS = -fobjc-arc

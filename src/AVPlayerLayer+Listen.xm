@@ -23,16 +23,26 @@ void const *screenKey;
       // Check if this notification is meant for this layer.
       NSString *screen = [notification.userInfo objectForKey: @"screen"];
       if ([screen isEqualToString: kBothscreens] || [screen isEqualToString: self.screen]) {
+        self.player = nil;
+
+        // Get the newPlayer.
+        AVPlayer *newPlayer = (AVPlayer *)[notification.userInfo objectForKey: @"player"];
         
-        self.player = (AVPlayer *)[notification.userInfo objectForKey: @"player"];
-
         // Update hidden.
-        self.opacity = self.player == nil ? 0.0 : 1.0;
-      }
+        self.hidden = newPlayer == nil;
 
-      // // Hide the original wallpaper view if playerLayer is configured.
-      // UIView *originalWPView = (UIView *) [self valueForKey: @"originalWPView"];
-      // originalWPView.hidden = self.player != nil;
+        // Hide the original wallpaper view if playerLayer is configured.
+        UIView *originalWPView = (UIView *) [self valueForKey: @"originalWPView"];
+        originalWPView.hidden = newPlayer != nil;
+
+        if (newPlayer != nil) {
+          // Delay to allow the layer to "rest", thus preventing it from not rendering anything when the actual player plays.
+          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            self.player = newPlayer;
+          });
+        }
+
+      }
 
     }];
   }

@@ -1,11 +1,13 @@
 #import <MobileCoreServices/MobileCoreServices.h>
-#import "ZX2ChooseVideoViewController.h"
+#import "ZX2ChooseWallpaperViewController.h"
+#import <framepreferences-Swift.h>
 #import "Globals.h"
 
-@implementation ZX2ChooseVideoViewController
+@implementation ZX2ChooseWallpaperViewController
 
   - (void) viewDidLoad {
     [super viewDidLoad];
+		self.navigationItem.title = @"Choose Wallpapers";
 
 		// Set bg color.
 		if (@available(iOS 13, *))
@@ -76,24 +78,40 @@
 		homescreenLabel = [[UILabel alloc] init];
     lockscreenLabel = [[UILabel alloc] init];
 
-    lockscreenPreview = [[ZX2WallpaperView alloc] initWithScreen: @"Lockscreen"];
-    homescreenPreview = [[ZX2WallpaperView alloc] initWithScreen: @"Homescreen"];
+    lockscreenPreview = [[ZX2WallpaperView alloc] initWithScreen: kLockscreen];
+    homescreenPreview = [[ZX2WallpaperView alloc] initWithScreen: kHomescreen];
 
 		lockscreenPreview.parentVC = homescreenPreview.parentVC = self;
 
     chooseWallpaperButton = [UIButton buttonWithType: UIButtonTypeCustom];
+		getWallpaperButton = [UIButton buttonWithType: UIButtonTypeCustom];
 
-		if (@available(iOS 13, *))
-			chooseWallpaperButton.backgroundColor = UIColor.systemBlueColor;
-		else
-			chooseWallpaperButton.backgroundColor = UIColor.blueColor;
+		UIColor *chooseBtnBgColor, *getBtnBgColor;
+
+		if (@available(iOS 13, *)) {
+			chooseBtnBgColor = UIColor.grayColor;
+			getBtnBgColor = UIColor.systemBlueColor;
+		}
+		else {
+			chooseBtnBgColor = UIColor.grayColor;
+			getBtnBgColor = UIColor.blueColor;
+		}
 		
+		chooseWallpaperButton.backgroundColor = chooseBtnBgColor;
 		[chooseWallpaperButton setTitle: @"Choose Video" forState: UIControlStateNormal];
 		[chooseWallpaperButton setTitleColor: UIColor.whiteColor forState: UIControlStateNormal];
 		[chooseWallpaperButton setTitleColor: UIColor.lightGrayColor forState: UIControlStateHighlighted];
 		chooseWallpaperButton.titleLabel.font = [UIFont systemFontOfSize: 24 weight: UIFontWeightMedium];
 		chooseWallpaperButton.layer.cornerRadius = 12;
 		[chooseWallpaperButton addTarget: self action: @selector(chooseVideo) forControlEvents: UIControlEventTouchUpInside];
+
+		getWallpaperButton.backgroundColor = getBtnBgColor;
+		[getWallpaperButton setTitle: @"Get Video" forState: UIControlStateNormal];
+		[getWallpaperButton setTitleColor: UIColor.whiteColor forState: UIControlStateNormal];
+		[getWallpaperButton setTitleColor: UIColor.lightGrayColor forState: UIControlStateHighlighted];
+		getWallpaperButton.titleLabel.font = [UIFont systemFontOfSize: 24 weight: UIFontWeightMedium];
+		getWallpaperButton.layer.cornerRadius = 12;
+		[getWallpaperButton addTarget: self action: @selector(presentWallpaperListing) forControlEvents: UIControlEventTouchUpInside];
 
 		// Configure the UI elements.
 		lockscreenLabel.text = @"Lock Screen";
@@ -163,6 +181,18 @@
 		[chooseWallpaperButton.leadingAnchor constraintEqualToAnchor: lockscreenPreview.leadingAnchor].active = true;
 		[chooseWallpaperButton.trailingAnchor constraintEqualToAnchor: homescreenPreview.trailingAnchor].active = true;
 
+		// Setup get video button.
+		getWallpaperButton.translatesAutoresizingMaskIntoConstraints = false;
+
+		[self.view addSubview: getWallpaperButton];
+
+		[getWallpaperButton.topAnchor constraintEqualToAnchor: chooseWallpaperButton.bottomAnchor constant: 32].active = true;
+		[getWallpaperButton.heightAnchor constraintEqualToConstant: 60].active = true;
+
+		// Align leading & trailing.
+		[getWallpaperButton.leadingAnchor constraintEqualToAnchor: chooseWallpaperButton.leadingAnchor].active = true;
+		[getWallpaperButton.trailingAnchor constraintEqualToAnchor: chooseWallpaperButton.trailingAnchor].active = true;
+
 		[self.view layoutIfNeeded];
   }
 
@@ -203,6 +233,12 @@
 		[self presentViewController: alertVC animated: true completion: nil];
 	}
 
+	// Push WallpaperListingViewController.
+	- (void) presentWallpaperListing {
+		PSViewController *vc = (PSViewController *) [[NSClassFromString(@"ZX2WallpaperListingViewController") alloc] init];
+		[self pushController: vc animate: true];
+	}
+
 	// Present a document picker view controller.
 	- (void) presentFileSelector {
 		NSArray<NSString *> *allowedUTIs = @[@"com.apple.m4v-video", @"com.apple.quicktime-movie", @"public.mpeg-4"];
@@ -219,8 +255,8 @@
 	// Image picker vc callback.
 	- (void) imagePickerController: (UIImagePickerController *) picker didFinishPickingMediaWithInfo: (NSDictionary<UIImagePickerControllerInfoKey, id> *) info {
 		[picker dismissViewControllerAnimated: YES completion: nil];
-		NSURL *newURL = (NSURL *) info[UIImagePickerControllerMediaURL];
-		[self didSelectVideo: newURL];
+		NSURL *url = (NSURL *) info[UIImagePickerControllerMediaURL];
+		[self didSelectVideo: url];
 	}
 
 	// Image picker vc callback.
@@ -238,24 +274,26 @@
 			alertControllerWithTitle: videoURL.lastPathComponent message: @"set as" preferredStyle: alertStyle];
 
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Lock Screen" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *a) {
-				[self setVideoURL: videoURL withKey: @"Lock" forKeyPath: @"videoURLLockscreen"];
+				[self setVideoURL: videoURL withKey: kLockscreen];
 		}]];
 
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Home Screen" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *a) {
-				[self setVideoURL: videoURL withKey: @"Home" forKeyPath: @"videoURLHomescreen"];
+				[self setVideoURL: videoURL withKey: kHomescreen];
 		}]];
 
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Both" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *a) {
-				[self setVideoURL: videoURL withKey: @"" forKeyPath: @"videoURL"];
+				[self setVideoURL: videoURL withKey: kBothscreens];
 		}]];
 
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Cancel" style: UIAlertActionStyleCancel handler: nil]];
 
-		[self presentViewController: alertVC animated: true completion: nil];
+		// Present this alert on the top view controller of the navigation stack.
+		// Thus, this method can be called by the presented wallpaper listing vc.
+		[self.navigationController.topViewController presentViewController: alertVC animated: true completion: nil];
 	}
 
-	// Updates user defaults with the provided videoURL, the provided filename key and the keyPath for which the videoURL should be set.
-	- (void) setVideoURL: (NSURL *) videoURLOri withKey: (NSString *) key forKeyPath: (NSString *) keyPath {
+	// Updates user defaults with the provided videoURL, the provided filename key and the key to use.
+	- (void) setVideoURL: (NSURL *) videoURLOri withKey: (NSString *) key {
 		// Try to copy the file at videoURL to an internal URL, return if failed.
 		NSURL *videoURL = nil;
 
@@ -265,30 +303,32 @@
 			if (videoURL == nil)
 				return;
 		}
+
+		NSString *completeKeyPath = [@"videoURL" stringByAppendingString: key];
 			
 		NSURL *sharedVideoURL = [bundleDefaultsShared URLForKey: @"videoURL"];
 		// Update videoURLs by cases.
 		if (sharedVideoURL != nil) {
 			// Previously set shared video.
-			if ([keyPath isEqualToString: @"videoURL"]) {
+			if ([key isEqualToString: kBothscreens]) {
 				// Override if setting a new shared video.
 				[bundleDefaultsShared setURL: videoURL forKey: @"videoURL"];
 			}
 			else {
 				// Else make the original shared video the key other than the specified key.
-				if ([keyPath isEqualToString: @"videoURLHomescreen"])
+				if ([key isEqualToString: kHomescreen])
 					[bundleDefaultsShared setURL: sharedVideoURL forKey: @"videoURLLockscreen"];
 				else
 					[bundleDefaultsShared setURL: sharedVideoURL forKey: @"videoURLHomescreen"];
 				// Set the URL for the actual keyPath.
-				[bundleDefaultsShared setURL: videoURL forKey: keyPath];
+				[bundleDefaultsShared setURL: videoURL forKey: completeKeyPath];
 				// Cleanup.
 				[bundleDefaultsShared removeObjectForKey: @"videoURL"];
 			}
 		}
 		else {
 			// Previously no (shared) video was set.
-			if ([keyPath isEqualToString: @"videoURL"]) {
+			if ([key isEqualToString: kBothscreens]) {
 				// Setting shared video.
 				[bundleDefaultsShared setURL: videoURL forKey: @"videoURL"];
 				// Cleanup.
@@ -296,8 +336,8 @@
 				[bundleDefaultsShared removeObjectForKey: @"videoURLHomescreen"];
 			}
 			else {
-				// Settting individual video.
-				[bundleDefaultsShared setURL: videoURL forKey: keyPath];
+				// Setting individual video.
+				[bundleDefaultsShared setURL: videoURL forKey: completeKeyPath];
 			}
 		}
 

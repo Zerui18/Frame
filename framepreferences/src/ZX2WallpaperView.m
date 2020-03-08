@@ -1,5 +1,5 @@
 #import "ZX2WallpaperView.h"
-#import "ZX2ChooseVideoViewController.h"
+#import "ZX2ChooseWallpaperViewController.h"
 #import "Globals.h"
 
 @implementation ZX2WallpaperView
@@ -82,7 +82,7 @@
     // No effect if this preview is empty.
     if (self.player == nil)
       return;
-    [self.parentVC setVideoURL: nil withKey: nil forKeyPath: [@"videoURL" stringByAppendingString: screen]];
+    [self.parentVC setVideoURL: nil withKey: screen];
   }
 
   - (void) muteButtonTapped: (UIButton *) sender {

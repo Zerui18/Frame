@@ -7,7 +7,7 @@
 bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
     bool enabled = [bundleDefaults boolForKey: @"isEnabled"];
     if ([bundleDefaults boolForKey: @"disableOnLPM"]) {
-        enabled = !NSProcessInfo.processInfo.isLowPowerModeEnabled;
+        enabled = enabled && !NSProcessInfo.processInfo.isLowPowerModeEnabled;
     }
     return enabled;
 }
@@ -30,7 +30,7 @@ bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
 
         // get user defaults & set default values
         bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
-        [bundleDefaults registerDefaults: @{ @"isEnabled" : @true, @"disableOnLPM" : @true, @"mutedLockscreen" : @true, @"mutedHomescreen" : @true, @"pauseInApps" : @true }];
+        [bundleDefaults registerDefaults: @{ @"isEnabled" : @true, @"disableOnLPM" : @true, @"mutedLockscreen" : @false, @"mutedHomescreen" : @false, @"pauseInApps" : @true }];
 
         // set allow mixing
         audioSession = [%c(AVAudioSession) sharedInstance];
@@ -175,7 +175,6 @@ bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
         else
             [self destroyPlayers];
 
-        [NSNotificationCenter.defaultCenter postNotificationName: @"EnabledChanged" object: nil];
     }
 
     // MARK: Public API
@@ -191,7 +190,8 @@ bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
         AVPlayerLayer *playerLayer = [AVPlayerLayer playerLayerWithPlayer: player];
         playerLayer.screen = isLockscreen ? kLockscreen : kHomescreen;
         [playerLayer setValue: superview.contentView forKey: @"originalWPView"];
-        playerLayer.opacity = player == nil ? 0.0 : 1.0;
+        playerLayer.hidden = player == nil;
+        superview.contentView.hidden = player != nil;
         [playerLayer listenForPlayerChangedNotification];
         playerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
         [superview.layer addSublayer: playerLayer];
@@ -217,7 +217,7 @@ bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
     - (void) playHomescreen {
         if (isAsleep)
             return;
-            
+        
         if (sharedPlayer != nil){
             sharedPlayer.muted = mutedHomescreen;
             [sharedPlayer play];

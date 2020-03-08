@@ -1,7 +1,8 @@
 #import <AVFoundation/AVFoundation.h>
+#import <Preferences/PSViewController.h>
 #import "ZX2WallpaperView.h"
 
-@interface ZX2ChooseVideoViewController : UIViewController <UIDocumentPickerDelegate, UINavigationControllerDelegate, UIImagePickerControllerDelegate> {
+@interface ZX2ChooseWallpaperViewController : PSViewController <UIDocumentPickerDelegate, UINavigationControllerDelegate, UIImagePickerControllerDelegate> {
 
   UILabel *lockscreenLabel;
   UILabel *homescreenLabel;
@@ -10,6 +11,7 @@
   ZX2WallpaperView *homescreenPreview;
 
   UIButton *chooseWallpaperButton;
+  UIButton *getWallpaperButton;
 
   AVPlayerLooper *lockscreenLooper;
   AVPlayerLooper *homescreenLooper;
@@ -25,6 +27,7 @@
 
 }
 
-- (void) setVideoURL: (NSURL *) videoURLOri withKey: (NSString *) key forKeyPath: (NSString *) keyPath;
+- (void) didSelectVideo: (NSURL *) videoURL;
+- (void) setVideoURL: (NSURL *) videoURLOri withKey: (NSString *) key;
 
 @end

@@ -4,6 +4,10 @@ UIImage *unmutedIcon;
 UIImage *deleteIcon;
 
 CGFloat min(CGFloat a, CGFloat b);
-@class ZX2ChooseVideoViewController;
+@class ZX2ChooseWallpaperViewController;
 
 UIImage *loadImage(NSBundle *bundle, NSString *name);
+
+FOUNDATION_EXPORT NSString *const kLockscreen;
+FOUNDATION_EXPORT NSString *const kHomescreen;
+FOUNDATION_EXPORT NSString *const kBothscreens;

@@ -277,8 +277,11 @@ void const *playerLayerKey;
 			%orig;
 			isOnLockscreen = false;
 			WallPlayer *player = [%c(WallPlayer) shared];
-			// Pause if player's only enabled on lockscreen.
 			[player pauseLockscreen];
+			// Additonal check to prevent situations where a shared player is set
+			// and when the user dismisses the cover sheet it doesn't stop playing.
+			if (isInApp && player.pauseInApps)
+				[player pauseSharedPlayer];				
 		}
 
 	%end
@@ -329,6 +332,10 @@ void const *playerLayerKey;
 			WallPlayer *player = [%c(WallPlayer) shared];
 			// Pause if player's only enabled on lockscreen.
 			[player pauseLockscreen];
+			// Additonal check to prevent situations where a shared player is set
+			// and when the user dismisses the cover sheet it doesn't stop playing.
+			if (isInApp && player.pauseInApps)
+				[player pauseSharedPlayer];		
 		}
 
 	%end
@@ -357,19 +364,16 @@ void createResourceFolder() {
 
 // Main
 %ctor {
-	NSString* libPath = @"/var/mobile/Documents/LookinServer.framework/LookinServer"; // @"/Users/zeruichen/Documents/LookinServer.framework/LookinServer";
-	dlopen([libPath UTF8String], RTLD_NOW);
-
 	// Create the resource folder if necessary & update permissions.
 	createResourceFolder();
 
 	%init(Tweak);
 
-	NSLog(@"[Frame]: Initialized %@", WallPlayer.shared);
-		
 	if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
 		%init(Fallback);
 	}
+
+	NSLog(@"[Frame]: Initiaslized %@", WallPlayer.shared);
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();

@@ -48,7 +48,7 @@
 			<key>cell</key>
 			<string>PSButtonCell</string>
 			<key>label</key>
-			<string>Choose Videos</string>
+			<string>Choose Wallpapers</string>
 			<key>action</key>
 			<string>presentChooseVC</string>
 		</dict>
@@ -63,6 +63,22 @@
 			<string>pauseInApps</string>
 			<key>label</key>
 			<string>Pause in Apps</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>RESPRING</string>
+			<key>footerText</key>
+			<string>The cure to all UI bugs.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Respring</string>
+			<key>action</key>
+			<string>respring</string>
 		</dict>
 		<dict>
 			<key>cell</key>
