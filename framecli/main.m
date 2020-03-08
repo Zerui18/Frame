@@ -50,13 +50,8 @@ int main(int argc, char *argv[], char *envp[]) {
 
 				NSURL *fileURL = [NSURL fileURLWithPath: [NSString stringWithUTF8String: filePath]];
 
-				// proceed to set file in shared defaults
-				NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
-				[defaults setURL: fileURL forKey: @"videoURL"];
-				notifyFrame();
-
-				printf("Successfully set video to %s\n", filePath);
-
+				// set URL
+				setVideoURL(fileURL, kBothscreens, bundleDefaults);
 				break;
 			}
 			// help / missing optarg
