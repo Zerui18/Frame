@@ -49,18 +49,21 @@ void const *playerLayerKey;
 			static bool hasAlerted;
  			
 			WallPlayer *player = [%c(WallPlayer) shared];
-			if ([player requiresDifferentSystemWallpapers] && s.sharedWallpaperView != nil) {
-				// Alert (once).
-				if (hasAlerted) return s;
-				// Setup alertVC and present.
-				UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
-												message: @"You have chosen different videos for lockscreen & homescreen, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect."
-												preferredStyle: UIAlertControllerStyleAlert];
-				[alertVC addAction: [UIAlertAction actionWithTitle: @"OK" style: UIAlertActionStyleDefault handler: nil]];
-				UIViewController *presenterVC = UIApplication.sharedApplication.windows.firstObject.rootViewController;
-				if (presenterVC != nil) {
-					[presenterVC presentViewController: alertVC animated: true completion: nil], hasAlerted = true;
-					hasAlerted = true;
+			// Alert user if Frame is active and settings is incompatible.
+			if (player.isTweakEnabled) {
+				if ([player requiresDifferentSystemWallpapers] && s.sharedWallpaperView != nil) {
+					// Alert (once).
+					if (hasAlerted) return s;
+					// Setup alertVC and present.
+					UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
+													message: @"You have chosen different videos for lockscreen & homescreen, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect."
+													preferredStyle: UIAlertControllerStyleAlert];
+					[alertVC addAction: [UIAlertAction actionWithTitle: @"OK" style: UIAlertActionStyleDefault handler: nil]];
+					UIViewController *presenterVC = UIApplication.sharedApplication.windows.firstObject.rootViewController;
+					if (presenterVC != nil) {
+						[presenterVC presentViewController: alertVC animated: true completion: nil], hasAlerted = true;
+						hasAlerted = true;
+					}
 				}
 			}
 
@@ -187,23 +190,6 @@ void const *playerLayerKey;
 		}
 	%end
 
-	// Control for sleep / wake.
-	%hook SBScreenWakeAnimationController
-
-		// Centralised control for play/pause corresponding to wake/sleep.
-		-(void) _startWakeAnimationsForWaking: (BOOL) isAwake animationSettings: (id) arg2 {
-			%orig;
-			isAsleep = !isAwake;
-			WallPlayer *player = [%c(WallPlayer) shared];
-			if (isAwake) {
-				[player playLockscreen];
-			}
-			else {
-				[player pause];
-			}
-		}
-	%end
-
 	// Control for Siri.
 	// This is in place of listening for audio session interruption notifications, which are not sent properly.
 	%hook SBAssistantRootViewController
@@ -237,6 +223,29 @@ void const *playerLayerKey;
 		}
 	%end
 
+	// Sleep / wake controls.
+	%hook FBDisplayLayoutTransition
+
+		// More reliable control for sleep / wait.
+		// Accounts for cases where no wake animation is required.
+		-(void) setBacklightLevel: (long long) level {
+			%orig(level);
+			// Determine whether screen is on.
+			bool isAwake = level != 0.0;
+			// Update global var.
+			isAsleep = !isAwake;
+			// Play / pause.
+			WallPlayer *player = [%c(WallPlayer) shared];
+			if (isAwake) {
+				[player playLockscreen];
+			}
+			else {
+				[player pause];
+			}
+		}
+	
+	%end
+
 	// Control for lockscreen & coversheet.
 	// Resume player whenever coversheet will be shown.
 	%hook CSCoverSheetViewController
@@ -254,6 +263,8 @@ void const *playerLayerKey;
 			if (!isAsleep) {
 				[player playLockscreen];
 			}
+
+			NSLog(@"CoverSheet will appear, isAsleep %d", isAsleep);
 		}
 
 		- (void) viewDidAppear: (BOOL) animated {
@@ -373,7 +384,7 @@ void createResourceFolder() {
 		%init(Fallback);
 	}
 
-	NSLog(@"[Frame]: Initiaslized %@", WallPlayer.shared);
+	NSLog(@"[Frame]: Initialized %@", WallPlayer.shared);
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();

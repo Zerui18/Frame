@@ -22,6 +22,7 @@
 @property(setter=setEnabled:, nonatomic) bool enabled;
 
 + (id) shared;
+- (bool) isTweakEnabled;
 - (void) reloadPlayers;
 - (AVPlayerLayer *) addInView: (SBFWallpaperView *) superview isLockscreen: (bool) isLockscreen;
 - (void) playHomescreen;

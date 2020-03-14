@@ -3,15 +3,6 @@
 #import "Globals.h"
 #import "AVPlayerLayer+Listen.h"
 
-// Helper function to check if tweak should be active based on isEnabled and disableOnLPM.
-bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
-    bool enabled = [bundleDefaults boolForKey: @"isEnabled"];
-    if ([bundleDefaults boolForKey: @"disableOnLPM"]) {
-        enabled = enabled && !NSProcessInfo.processInfo.isLowPowerModeEnabled;
-    }
-    return enabled;
-}
-
 @implementation WallPlayer
 
     // Shared singleton.
@@ -30,7 +21,7 @@ bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
 
         // get user defaults & set default values
         bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
-        [bundleDefaults registerDefaults: @{ @"isEnabled" : @true, @"disableOnLPM" : @true, @"mutedLockscreen" : @false, @"mutedHomescreen" : @false, @"pauseInApps" : @true }];
+        [bundleDefaults registerDefaults: @{ @"isEnabled" : @true, @"disableOnLPM" : @true, @"mutedLockscreen" : @true, @"mutedHomescreen" : @true, @"pauseInApps" : @true }];
 
         // set allow mixing
         audioSession = [%c(AVAudioSession) sharedInstance];
@@ -49,7 +40,7 @@ bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
         [bundleDefaults addObserver: self forKeyPath: @"isEnabled" options: NSKeyValueObservingOptionNew context: nil];
         [bundleDefaults addObserver: self forKeyPath: @"disableOnLPM" options: NSKeyValueObservingOptionNew context: nil];
 
-        self.enabled = isTweakEnabled(bundleDefaults);
+        self.enabled = self.isTweakEnabled;
 
         // listen for LPM notifications
         [NSNotificationCenter.defaultCenter addObserverForName: NSProcessInfoPowerStateDidChangeNotification object: nil
@@ -58,10 +49,19 @@ bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
                 return;
 
             // update "enabled" based on lpm status
-            self.enabled = isTweakEnabled(bundleDefaults);
+            self.enabled = self.isTweakEnabled;
         }];
     
         return self;
+    }
+
+    // Helper function to check if tweak should be active based on isEnabled and disableOnLPM.
+    - (bool) isTweakEnabled {
+        bool enabled = [bundleDefaults boolForKey: @"isEnabled"];
+        if ([bundleDefaults boolForKey: @"disableOnLPM"]) {
+            enabled = enabled && !NSProcessInfo.processInfo.isLowPowerModeEnabled;
+        }
+        return enabled;
     }
 
     // Helper method that creates a looper-managed AVPlayer and returns the player.
@@ -136,11 +136,11 @@ bool isTweakEnabled(NSUserDefaults *bundleDefaults) {
     // Bundle defaults KVO.
     - (void) observeValueForKeyPath: (NSString *)keyPath ofObject: (id)object change: (NSDictionary *)change context: (void *)context {
         if ([keyPath isEqualToString: @"isEnabled"]) {
-            self.enabled = isTweakEnabled(bundleDefaults);
+            self.enabled = self.isTweakEnabled;
         }
         else if ([keyPath isEqualToString: @"disableOnLPM"]) {
             disableOnLPM = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
-            self.enabled = isTweakEnabled(bundleDefaults);
+            self.enabled = self.isTweakEnabled;
         }
         else if ([keyPath isEqualToString: @"mutedLockscreen"]) {
             mutedLockscreen = lockscreenPlayer.muted = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
