@@ -3,6 +3,27 @@
 #import "Globals.h"
 #import <framepreferences-Swift.h>
 
+// Check for folder access, otherwise warn user.
+void checkResourceFolder(UIViewController *presenterVC) {
+	NSString *testFile = @"/var/mobile/Documents/com.ZX02.Frame/.test.txt";
+
+	// Try to write to a test file.
+	NSString *str = @"Please do not delete this folder.";
+	NSError *err;
+	[str writeToFile: testFile atomically: true encoding: NSUTF8StringEncoding error: &err];
+
+	if (err != nil) {
+		UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
+													message: @"Resource folder can't be accessed."
+													preferredStyle: UIAlertControllerStyleAlert];
+		[alertVC addAction: [UIAlertAction actionWithTitle: @"Details" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *action) {
+			[[UIApplication sharedApplication] openURL: [NSURL URLWithString:@"https://zerui18.github.io/ZX02#err=1"] options:@{} completionHandler: nil];
+		}]];
+		[alertVC addAction: [UIAlertAction actionWithTitle: @"Ignore" style: UIAlertActionStyleCancel handler: nil]];
+		[presenterVC presentViewController: alertVC animated: true completion: nil];
+	}
+}
+
 @implementation ZX2RootListController
 
 	- (NSArray *) specifiers {
@@ -21,6 +42,11 @@
 		deleteIcon = loadImage(bundle, @"delete");
 
 		return _specifiers;
+	}
+
+	- (void) viewDidAppear: (bool) animated {
+		[super viewDidAppear: animated];
+		checkResourceFolder(self);
 	}
 
 	- (void) respring {

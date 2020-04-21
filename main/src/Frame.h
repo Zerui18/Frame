@@ -4,7 +4,7 @@
 // Manages a single instance of AVQueuePlayer that's controlled by the AVPlayerLooper.
 // Adds AVPlayerLayer to the provided views.
 
-@interface WallPlayer : NSObject {
+@interface Frame : NSObject {
     NSUserDefaults *bundleDefaults;
     AVAudioSession *audioSession;
 
@@ -14,7 +14,7 @@
 
     bool mutedLockscreen;
     bool mutedHomescreen;
-
+    bool syncRingerVolume;
     bool disableOnLPM;
 }
 

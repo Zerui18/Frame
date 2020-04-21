@@ -5,12 +5,33 @@
 #import "FBSystemService.h"
 #import "SpringBoard.h"
 #import "Globals.h"
-#import "WallPlayer.h"
+#import "Frame.h"
 #import "UIView+.h"
 
 // MARK: Main Tweak
 
 void const *playerLayerKey;
+
+// Check for folder access, otherwise warn user.
+void checkResourceFolder(UIViewController *presenterVC) {
+	NSString *testFile = @"/var/mobile/Documents/com.ZX02.Frame/.test.txt";
+
+	// Try to write to a test file.
+	NSString *str = @"Please do not delete this folder.";
+	NSError *err;
+	[str writeToFile: testFile atomically: true encoding: NSUTF8StringEncoding error: &err];
+
+	if (err != nil) {
+		UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
+													message: @"Resource folder can't be accessed."
+													preferredStyle: UIAlertControllerStyleAlert];
+		[alertVC addAction: [UIAlertAction actionWithTitle: @"Details" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *action) {
+			[[UIApplication sharedApplication] openURL: [NSURL URLWithString: @"https://zerui18.github.io/ZX02#err=frame.res404"] options:@{} completionHandler: nil];
+		}]];
+		[alertVC addAction: [UIAlertAction actionWithTitle: @"Ignore" style: UIAlertActionStyleCancel handler: nil]];
+		[presenterVC presentViewController: alertVC animated: true completion: nil];
+	}
+}
 
 %group Tweak
 
@@ -23,7 +44,7 @@ void const *playerLayerKey;
 		if (playerLayer == nil) {
 
 			// Setup Player.
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			// Note: Don't add wallpaperView into .contentView as it's irregularly framed.
 			playerLayer = [player addInView: wallpaperView isLockscreen: isLockscreenView];
 			objc_setAssociatedObject(wallpaperView, &playerLayerKey, playerLayer, OBJC_ASSOCIATION_RETAIN);
@@ -48,7 +69,7 @@ void const *playerLayerKey;
 			// We will also check if the user's configuration's erroneous.
 			static bool hasAlerted;
  			
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			// Alert user if Frame is active and settings is incompatible.
 			if (player.isTweakEnabled) {
 				if ([player requiresDifferentSystemWallpapers] && s.sharedWallpaperView != nil) {
@@ -156,7 +177,7 @@ void const *playerLayerKey;
 		}
 	%end
 
-	// Coordinate the WallPlayer with SpringBoard.
+	// Coordinate the Frame with SpringBoard.
 	// Pause player when an application opens.
 	// Resume player when the homescreen is shown.
 
@@ -165,7 +186,7 @@ void const *playerLayerKey;
 		// Control for enter / exit app.
 		- (void) frontDisplayDidChange: (id) newDisplay {
 			%orig;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			if (newDisplay != nil) {
 				// Only pause if we're entering an app and not just entering app-switcher.
 				if (!isInApp) {
@@ -196,7 +217,7 @@ void const *playerLayerKey;
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
 
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			if (isOnLockscreen) // Play lockscreen.
 				[player playLockscreen];
 			else if (!isInApp || !player.pauseInApps) // Play homescreen if we're not in app OR player doesn't pause in apps.
@@ -211,7 +232,7 @@ void const *playerLayerKey;
 			SBLayoutStateTransitionContext *s = %orig;
 			SBLayoutState *from = s.fromLayoutState;
 			SBLayoutState *to = s.toLayoutState;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			if (from.elements != nil && to.elements == nil) {
 				// Leaving an app.
 				if (isInApp) {
@@ -235,7 +256,7 @@ void const *playerLayerKey;
 			// Update global var.
 			isAsleep = !isAwake;
 			// Play / pause.
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			if (isAwake) {
 				[player playLockscreen];
 			}
@@ -257,19 +278,17 @@ void const *playerLayerKey;
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
 			isOnLockscreen = true;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			// Ignore if this is triggered on sleep.
 			// Otherwise eagerly play.
 			if (!isAsleep) {
 				[player playLockscreen];
 			}
-
-			NSLog(@"CoverSheet will appear, isAsleep %d", isAsleep);
 		}
 
 		- (void) viewDidAppear: (BOOL) animated {
 			%orig;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			// Ignore if this is triggered on sleep.
 			if (!isAsleep) {
 				[player pauseHomescreen];
@@ -278,7 +297,7 @@ void const *playerLayerKey;
 
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			if (!player.pauseInApps || !isInApp) {
 				[player playHomescreen];
 			}
@@ -287,12 +306,27 @@ void const *playerLayerKey;
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
 			isOnLockscreen = false;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			[player pauseLockscreen];
 			// Additonal check to prevent situations where a shared player is set
 			// and when the user dismisses the cover sheet it doesn't stop playing.
 			if (isInApp && player.pauseInApps)
 				[player pauseSharedPlayer];				
+		}
+
+	%end
+
+	%hook SBHomeScreenViewController
+
+		- (void) viewDidAppear: (bool) animated {
+			%orig;
+						
+			// Here we check the resource folder and alert user if there's an error.
+			static bool checkedFolder = false;
+			if (!checkedFolder) {
+				checkResourceFolder(self);
+				checkedFolder = true;
+			}
 		}
 
 	%end
@@ -312,7 +346,7 @@ void const *playerLayerKey;
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
 			isOnLockscreen = true;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			// Ignore if this is triggered on sleep.
 			// Otherwise eagerly play.
 			if (!isAsleep) {
@@ -322,7 +356,7 @@ void const *playerLayerKey;
 
 		- (void) viewDidAppear: (BOOL) animated {
 			%orig;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			// Ignore if this is triggered on sleep.
 			if (!isAsleep) {
 				[player pauseHomescreen];
@@ -331,7 +365,7 @@ void const *playerLayerKey;
 
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			if (!player.pauseInApps || !isInApp) {
 				[player playHomescreen];
 			}
@@ -340,7 +374,7 @@ void const *playerLayerKey;
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
 			isOnLockscreen = false;
-			WallPlayer *player = [%c(WallPlayer) shared];
+			Frame *player = [%c(Frame) shared];
 			// Pause if player's only enabled on lockscreen.
 			[player pauseLockscreen];
 			// Additonal check to prevent situations where a shared player is set
@@ -358,7 +392,7 @@ void respringCallback(CFNotificationCenterRef center, void * observer, CFStringR
 }
 
 void videoChangedCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
-	[WallPlayer.shared reloadPlayers];
+	[Frame.shared reloadPlayers];
 }
 
 // Fix permissions for users who've updated Frame.
@@ -384,7 +418,7 @@ void createResourceFolder() {
 		%init(Fallback);
 	}
 
-	NSLog(@"[Frame]: Initialized %@", WallPlayer.shared);
+	NSLog(@"[Frame]: Initialized %@", Frame.shared);
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();

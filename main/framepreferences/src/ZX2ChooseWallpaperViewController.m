@@ -120,6 +120,13 @@
 		lockscreenLabel.font = [UIFont systemFontOfSize: 20];
 		homescreenLabel.font = [UIFont systemFontOfSize: 20];
 
+		moreVideosLabel = [[UILabel alloc] init];
+		moreVideosLabel.userInteractionEnabled = true;
+		moreVideosLabel.text = @"More Videos >>";
+		moreVideosLabel.textColor = getBtnBgColor;
+		moreVideosLabel.font = [UIFont systemFontOfSize: 20];
+		[moreVideosLabel addGestureRecognizer: [[UITapGestureRecognizer alloc] initWithTarget: self action: @selector(openAltCatalogue)]];
+
 		[self setupLayout];
 
 		homescreenPreview.layer.cornerRadius = lockscreenPreview.layer.cornerRadius = 24;
@@ -193,8 +200,19 @@
 		[getWallpaperButton.leadingAnchor constraintEqualToAnchor: chooseWallpaperButton.leadingAnchor].active = true;
 		[getWallpaperButton.trailingAnchor constraintEqualToAnchor: chooseWallpaperButton.trailingAnchor].active = true;
 
+		// More videos label.
+		moreVideosLabel.translatesAutoresizingMaskIntoConstraints = false;
+		[self.view addSubview: moreVideosLabel];
+		[moreVideosLabel.topAnchor constraintEqualToAnchor: getWallpaperButton.bottomAnchor constant: 12].active = true;
+		[moreVideosLabel.centerXAnchor constraintEqualToAnchor: self.view.centerXAnchor].active = true;
+
 		[self.view layoutIfNeeded];
   }
+
+	- (void) openAltCatalogue {
+		NSURL *driveURL = [NSURL URLWithString: @"https://drive.google.com/drive/u/0/folders/1-16sl03hU_Yxn4k66nZlIvUV47TmUqvQ"];
+		[[UIApplication sharedApplication] openURL: driveURL options:@{} completionHandler: nil];
+	}
 
 	// Kickstart the choose video UX.
 	- (void) chooseVideo {

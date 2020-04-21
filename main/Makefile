@@ -1,4 +1,4 @@
-TARGET = iphone:clang:13.0:12.2
+TARGET = iphone:clang::12.1.99
 ARCHS = arm64 arm64e
 INSTALL_TARGET_PROCESSES = SpringBoard
 SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk

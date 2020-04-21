@@ -8,6 +8,12 @@
 @interface CSCoverSheetViewController : UIViewController
 @end
 
+@interface SBDashBoardViewController : UIViewController
+@end
+
+@interface SBHomeScreenViewController : UIViewController
+@end
+
 @interface SBCoverSheetPanelBackgroundContainerView : UIView
 @end
 

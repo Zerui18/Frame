@@ -1,13 +1,14 @@
 #import "SpringBoard.h"
-#import "WallPlayer.h"
+#import "Frame.h"
 #import "Globals.h"
+#import "Utils.h"
 #import "AVPlayerLayer+Listen.h"
 
-@implementation WallPlayer
+@implementation Frame
 
     // Shared singleton.
     + (id) shared {
-        static WallPlayer *shared = nil;
+        static Frame *shared = nil;
         static dispatch_once_t onceToken;
         dispatch_once_on_main_thread(&onceToken, ^{
             shared = [[self alloc] init];
@@ -21,25 +22,34 @@
 
         // get user defaults & set default values
         bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
-        [bundleDefaults registerDefaults: @{ @"isEnabled" : @true, @"disableOnLPM" : @true, @"mutedLockscreen" : @true, @"mutedHomescreen" : @true, @"pauseInApps" : @true }];
+        [bundleDefaults registerDefaults: @{ @"isEnabled" : @true,
+                                            @"disableOnLPM" : @true,
+                                            @"mutedLockscreen" : @true,
+                                            @"mutedHomescreen" : @true,
+                                            @"pauseInApps" : @true,
+                                            @"syncRingerVolume" : @true,
+                                            }];
 
         // set allow mixing
         audioSession = [%c(AVAudioSession) sharedInstance];
         [audioSession setCategory: AVAudioSessionCategoryPlayback withOptions: AVAudioSessionCategoryOptionMixWithOthers error: nil];
-        [audioSession setActive: YES withOptions: nil error: nil];
+        [audioSession addObserver: self forKeyPath: @"outputVolume" options: NSKeyValueObservingOptionNew context: nil];
 
         disableOnLPM = [bundleDefaults boolForKey: @"disableOnLPM"];
         mutedLockscreen = [bundleDefaults boolForKey: @"mutedLockscreen"];
         mutedHomescreen = [bundleDefaults boolForKey: @"mutedHomescreen"];
         self.pauseInApps = [bundleDefaults boolForKey: @"pauseInApps"];
+        syncRingerVolume = [bundleDefaults boolForKey: @"syncRingerVolume"];
 
         // begin observing settings changes
+        [bundleDefaults addObserver: self forKeyPath: @"isEnabled" options: NSKeyValueObservingOptionNew context: nil];
+        [bundleDefaults addObserver: self forKeyPath: @"disableOnLPM" options: NSKeyValueObservingOptionNew context: nil];
         [bundleDefaults addObserver: self forKeyPath: @"mutedLockscreen" options: NSKeyValueObservingOptionNew context: nil];
         [bundleDefaults addObserver: self forKeyPath: @"mutedHomescreen" options: NSKeyValueObservingOptionNew context: nil];
         [bundleDefaults addObserver: self forKeyPath: @"pauseInApps" options: NSKeyValueObservingOptionNew context: nil];
-        [bundleDefaults addObserver: self forKeyPath: @"isEnabled" options: NSKeyValueObservingOptionNew context: nil];
-        [bundleDefaults addObserver: self forKeyPath: @"disableOnLPM" options: NSKeyValueObservingOptionNew context: nil];
+        [bundleDefaults addObserver: self forKeyPath: @"syncRingerVolume" options: NSKeyValueObservingOptionNew context: nil];
 
+        // Set enabled after initializing all other properties.
         self.enabled = self.isTweakEnabled;
 
         // listen for LPM notifications
@@ -135,21 +145,36 @@
 
     // Bundle defaults KVO.
     - (void) observeValueForKeyPath: (NSString *)keyPath ofObject: (id)object change: (NSDictionary *)change context: (void *)context {
+        // Save boilerplate code below.
+        bool changeInBool = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
         if ([keyPath isEqualToString: @"isEnabled"]) {
             self.enabled = self.isTweakEnabled;
         }
         else if ([keyPath isEqualToString: @"disableOnLPM"]) {
-            disableOnLPM = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
+            disableOnLPM = changeInBool;
             self.enabled = self.isTweakEnabled;
         }
         else if ([keyPath isEqualToString: @"mutedLockscreen"]) {
-            mutedLockscreen = lockscreenPlayer.muted = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
+            mutedLockscreen = lockscreenPlayer.muted = changeInBool;
         }
         else if ([keyPath isEqualToString: @"mutedHomescreen"]) {
-            mutedHomescreen = homescreenPlayer.muted = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
+            mutedHomescreen = homescreenPlayer.muted = changeInBool;
         }
         else if ([keyPath isEqualToString: @"pauseInApps"]) {
-            self.pauseInApps = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
+            self.pauseInApps = changeInBool;
+        }
+        else if ([keyPath isEqualToString: @"syncRingerVolume"]) {
+            syncRingerVolume = changeInBool;
+            if (syncRingerVolume && self.isTweakEnabled) {
+                setRingerVolume(audioSession.outputVolume);
+            }
+        }
+        // System Volume Changed.
+        else if ([keyPath isEqualToString: @"outputVolume"]) {
+            if (syncRingerVolume && self.isTweakEnabled) {
+                float newVolume = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];
+                setRingerVolume(newVolume);
+            }
         }
     }
 
@@ -164,7 +189,7 @@
             [self playHomescreen];
     }
 
-    // Setter for enabled
+    // Setter for enabled.
     - (void) setEnabled: (bool) flag {
         if (flag == _enabled)
             return;
@@ -174,7 +199,10 @@
             [self reloadPlayers];
         else
             [self destroyPlayers];
-
+        
+        // Only activate the audioSession when the tweak is enabled.
+        // Thus, when the tweak is disabled the user can normally control the ringer volume.
+        [audioSession setActive: _enabled withOptions: nil error: nil];
     }
 
     // MARK: Public API
@@ -246,6 +274,7 @@
         [homescreenPlayer pause];
     }
 
+    // Bool indicating whether the current configuration will require separate system wallpapers to be set.
     - (bool) requiresDifferentSystemWallpapers {
         return lockscreenPlayer != nil || homescreenPlayer != nil;
     }

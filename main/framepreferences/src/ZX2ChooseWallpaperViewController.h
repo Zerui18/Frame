@@ -25,9 +25,12 @@
   UIImage *unmutedIcon;
   UIImage *deleteIcon;
 
+  UILabel *moreVideosLabel;
+
 }
 
 - (void) didSelectVideo: (NSURL *) videoURL;
 - (void) setVideoURL: (NSURL *) videoURLOri withKey: (NSString *) key;
+- (void) openAltCatalogue;
 
 @end
