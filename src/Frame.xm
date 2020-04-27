@@ -4,6 +4,9 @@
 #import "Utils.h"
 #import "AVPlayerLayer+Listen.h"
 
+#define KVC_OBSERVE(keyPath) [bundleDefaults addObserver: self forKeyPath: keyPath options: NSKeyValueObservingOptionNew context: nil]
+#define POST_PLAYER_CHANGED(dict) [NSNotificationCenter.defaultCenter postNotificationName: @"PlayerChanged" object: nil userInfo: dict]
+
 @implementation Frame
 
     // Shared singleton.
@@ -28,6 +31,9 @@
                                             @"mutedHomescreen" : @true,
                                             @"pauseInApps" : @true,
                                             @"syncRingerVolume" : @true,
+                                            @"fadeEnabled" : @false,
+                                            @"fadeAlpha" : @0.05,
+                                            @"fadeInactivity" : @4.0
                                             }];
 
         // set allow mixing
@@ -40,14 +46,20 @@
         mutedHomescreen = [bundleDefaults boolForKey: @"mutedHomescreen"];
         self.pauseInApps = [bundleDefaults boolForKey: @"pauseInApps"];
         syncRingerVolume = [bundleDefaults boolForKey: @"syncRingerVolume"];
+        self.fadeEnabled = [bundleDefaults boolForKey: @"fadeEnabled"];
+        self.fadeAlpha = [bundleDefaults floatForKey: @"fadeAlpha"];
+        self.fadeInactivity = [bundleDefaults floatForKey: @"fadeInactivity"];
 
         // begin observing settings changes
-        [bundleDefaults addObserver: self forKeyPath: @"isEnabled" options: NSKeyValueObservingOptionNew context: nil];
-        [bundleDefaults addObserver: self forKeyPath: @"disableOnLPM" options: NSKeyValueObservingOptionNew context: nil];
-        [bundleDefaults addObserver: self forKeyPath: @"mutedLockscreen" options: NSKeyValueObservingOptionNew context: nil];
-        [bundleDefaults addObserver: self forKeyPath: @"mutedHomescreen" options: NSKeyValueObservingOptionNew context: nil];
-        [bundleDefaults addObserver: self forKeyPath: @"pauseInApps" options: NSKeyValueObservingOptionNew context: nil];
-        [bundleDefaults addObserver: self forKeyPath: @"syncRingerVolume" options: NSKeyValueObservingOptionNew context: nil];
+        KVC_OBSERVE(@"isEnabled");
+        KVC_OBSERVE(@"disableOnLPM");
+        KVC_OBSERVE(@"mutedLockscreen");
+        KVC_OBSERVE(@"mutedHomescreen");
+        KVC_OBSERVE(@"pauseInApps");
+        KVC_OBSERVE(@"syncRingerVolume");
+        KVC_OBSERVE(@"fadeEnabled");
+        KVC_OBSERVE(@"fadeAlpha");
+        KVC_OBSERVE(@"fadeInactivity");
 
         // Set enabled after initializing all other properties.
         self.enabled = self.isTweakEnabled;
@@ -78,6 +90,8 @@
     - (AVQueuePlayer *) createLoopedPlayerWithURL: (NSURL *) videoURL {
         // Init player, playerItem and looper.
         AVQueuePlayer *player = [[AVQueuePlayer alloc] init];
+        // Prevent airplay.
+        player.allowsExternalPlayback = false;
         if (@available(iOS 12, *))
             player.preventsDisplaySleepDuringVideoPlayback = false;
         AVPlayerItem *item = [AVPlayerItem playerItemWithURL: videoURL];
@@ -102,21 +116,21 @@
         NSURL *sharedVideoURL = [bundleDefaults URLForKey: @"videoURL"];
         if (sharedVideoURL != nil) {
             sharedPlayer = [self createLoopedPlayerWithURL: sharedVideoURL];
-            [NSNotificationCenter.defaultCenter postNotificationName: @"PlayerChanged" object: nil userInfo: @{ @"screen" : kBothscreens, @"player" : sharedPlayer }];
+            POST_PLAYER_CHANGED((@{ @"screen" : kBothscreens, @"player" : sharedPlayer }));
         }
         else {
             NSURL *lockscreenVideoURL = [bundleDefaults URLForKey: @"videoURLLockscreen"];
             if (lockscreenVideoURL != nil) {
                 lockscreenPlayer = [self createLoopedPlayerWithURL: lockscreenVideoURL];
                 lockscreenPlayer.muted = mutedLockscreen;
-                [NSNotificationCenter.defaultCenter postNotificationName: @"PlayerChanged" object: nil userInfo: @{ @"screen" : kLockscreen, @"player" : lockscreenPlayer }];
+                POST_PLAYER_CHANGED((@{ @"screen" : kLockscreen, @"player" : lockscreenPlayer }));
             }
 
             NSURL *homescreenVideoURL = [bundleDefaults URLForKey: @"videoURLHomescreen"];
             if (homescreenVideoURL != nil) {
                 homescreenPlayer = [self createLoopedPlayerWithURL: homescreenVideoURL];
                 homescreenPlayer.muted = mutedHomescreen;
-                [NSNotificationCenter.defaultCenter postNotificationName: @"PlayerChanged" object: nil userInfo: @{ @"screen" : kHomescreen, @"player" : homescreenPlayer }];
+                POST_PLAYER_CHANGED((@{ @"screen" : kHomescreen, @"player" : lockscreenPlayer }));
             }
         }
 
@@ -140,42 +154,45 @@
         lockscreenPlayer = nil;
         homescreenPlayer = nil;
 
-        [NSNotificationCenter.defaultCenter postNotificationName: @"PlayerChanged" object: nil userInfo: @{ @"screen" : kBothscreens }];
+        POST_PLAYER_CHANGED((@{ @"screen" : kBothscreens }));
     }
 
+    #define IF_KEYPATH(str, expr) if ([keyPath isEqualToString: str]) { expr }
+    #define ELIF_KEYPATH(str, expr) else if ([keyPath isEqualToString: str]) { expr }
     // Bundle defaults KVO.
     - (void) observeValueForKeyPath: (NSString *)keyPath ofObject: (id)object change: (NSDictionary *)change context: (void *)context {
         // Save boilerplate code below.
         bool changeInBool = [[change valueForKey: NSKeyValueChangeNewKey] boolValue];
-        if ([keyPath isEqualToString: @"isEnabled"]) {
-            self.enabled = self.isTweakEnabled;
-        }
-        else if ([keyPath isEqualToString: @"disableOnLPM"]) {
-            disableOnLPM = changeInBool;
-            self.enabled = self.isTweakEnabled;
-        }
-        else if ([keyPath isEqualToString: @"mutedLockscreen"]) {
-            mutedLockscreen = lockscreenPlayer.muted = changeInBool;
-        }
-        else if ([keyPath isEqualToString: @"mutedHomescreen"]) {
-            mutedHomescreen = homescreenPlayer.muted = changeInBool;
-        }
-        else if ([keyPath isEqualToString: @"pauseInApps"]) {
-            self.pauseInApps = changeInBool;
-        }
-        else if ([keyPath isEqualToString: @"syncRingerVolume"]) {
+
+        IF_KEYPATH(@"isEnabled", self.enabled = self.isTweakEnabled; self.enabled = self.isTweakEnabled;)
+
+        ELIF_KEYPATH(@"disableOnLPM", disableOnLPM = changeInBool;)
+
+        ELIF_KEYPATH(@"mutedLockscreen", mutedLockscreen = lockscreenPlayer.muted = changeInBool;)
+
+        ELIF_KEYPATH(@"mutedHomescreen", mutedHomescreen = homescreenPlayer.muted = changeInBool;)
+
+        ELIF_KEYPATH(@"pauseInApps", self.pauseInApps = changeInBool;)
+
+        ELIF_KEYPATH(@"syncRingerVolume", 
             syncRingerVolume = changeInBool;
             if (syncRingerVolume && self.isTweakEnabled) {
                 setRingerVolume(audioSession.outputVolume);
             }
-        }
-        // System Volume Changed.
-        else if ([keyPath isEqualToString: @"outputVolume"]) {
+        )
+
+        ELIF_KEYPATH(@"outputVolume", 
             if (syncRingerVolume && self.isTweakEnabled) {
                 float newVolume = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];
                 setRingerVolume(newVolume);
             }
-        }
+        )
+
+        ELIF_KEYPATH(@"fadeEnabled", self.fadeEnabled = changeInBool;)
+
+        ELIF_KEYPATH(@"fadeAlpha", self.fadeAlpha = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];)
+
+        ELIF_KEYPATH(@"fadeInactivity", NSLog(@"dur = %f s", [[change valueForKey: NSKeyValueChangeNewKey] floatValue]); self.fadeInactivity = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];)
     }
 
     // Setter for pauseInApps.

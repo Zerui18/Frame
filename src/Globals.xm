@@ -1,6 +1,6 @@
 #include "Globals.h"
 
-bool isAsleep = true;
+bool isAsleep = false;
 bool isInApp = false;
 bool isOnLockscreen = true;
 

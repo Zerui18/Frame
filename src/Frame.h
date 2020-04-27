@@ -4,6 +4,8 @@
 // Manages a single instance of AVQueuePlayer that's controlled by the AVPlayerLooper.
 // Adds AVPlayerLayer to the provided views.
 
+#define FRAME ((Frame *)[Frame shared])
+
 @interface Frame : NSObject {
     NSUserDefaults *bundleDefaults;
     AVAudioSession *audioSession;
@@ -16,8 +18,12 @@
     bool mutedHomescreen;
     bool syncRingerVolume;
     bool disableOnLPM;
+    bool hideHomescreen;
 }
 
+@property bool fadeEnabled;
+@property float fadeAlpha;
+@property float fadeInactivity;
 @property(setter=setPauseInApps:, nonatomic) bool pauseInApps;
 @property(setter=setEnabled:, nonatomic) bool enabled;
 

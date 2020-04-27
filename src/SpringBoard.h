@@ -1,30 +1,29 @@
 #import <UIKit/UIKit.h>
 
+#define DEF_UIVIEW(class) @interface class : UIView \
+@end
+
+#define DEF_UIWINDOW(class) @interface class : UIWindow \
+@end
+
+#define DEF_UIVC(class) @interface class : UIViewController \
+@end
+
 // Class decls.
 @interface SBFWallpaperView : UIView
-    @property (nonatomic, retain) UIView *contentView;
+@property UIView *contentView;
 @end
 
-@interface CSCoverSheetViewController : UIViewController
-@end
+DEF_UIVIEW(SBIconScrollView)
+DEF_UIVIEW(SBIconListView)
 
-@interface SBDashBoardViewController : UIViewController
-@end
+DEF_UIWINDOW(_SBWallpaperWindow)
+DEF_UIWINDOW(SBCoverSheetWindow)
+DEF_UIWINDOW(SBReachabilityWindow)
 
-@interface SBHomeScreenViewController : UIViewController
-@end
-
-@interface SBCoverSheetPanelBackgroundContainerView : UIView
-@end
-
-@interface _SBWallpaperWindow : UIWindow
-@end
-
-@interface SBCoverSheetWindow : UIWindow
-@end
-
-@interface SBReachabilityWindow : UIWindow
-@end
+DEF_UIVC(CSCoverSheetViewController)
+DEF_UIVC(SBDashBoardViewController)
+DEF_UIVC(SBHomeScreenViewController)
 
 // Category for getting the parent view controller of the receiver view.
 // https://stackoverflow.com/a/24590678
@@ -40,6 +39,7 @@
         return (UIViewController *)responder;
     }
 @end
+
 
 @interface SBWallpaperController
     + (id)sharedInstance;
@@ -62,5 +62,4 @@
 @property (nonatomic,readonly) SBLayoutState * toLayoutState;    
 @end
 
-@interface SBFolderIconImageView : UIView
-@end
+DEF_UIVIEW(SBFolderIconImageView)

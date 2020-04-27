@@ -9,7 +9,6 @@
 #import "UIView+.h"
 
 // MARK: Main Tweak
-
 void const *playerLayerKey;
 
 // Check for folder access, otherwise warn user.
@@ -26,7 +25,7 @@ void checkResourceFolder(UIViewController *presenterVC) {
 													message: @"Resource folder can't be accessed."
 													preferredStyle: UIAlertControllerStyleAlert];
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Details" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *action) {
-			[[UIApplication sharedApplication] openURL: [NSURL URLWithString: @"https://zerui18.github.io/ZX02#err=frame.res404"] options:@{} completionHandler: nil];
+			[[UIApplication sharedApplication] openURL: [NSURL URLWithString: @"https://zerui18.github.io/ZX02#err=frame.resAccess"] options:@{} completionHandler: nil];
 		}]];
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Ignore" style: UIAlertActionStyleCancel handler: nil]];
 		[presenterVC presentViewController: alertVC animated: true completion: nil];
@@ -35,7 +34,7 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 %group Tweak
 
-	// Helper function that sets up wallpaper player in the given wallpaperView.
+	// Helper function that sets up wallpaper FRAME in the given wallpaperView.
 	void setupWallpaperPlayer(SBFWallpaperView *wallpaperView, bool isLockscreenView) {
 		// Attempts to retrieve associated AVPlayerLayer.
 		AVPlayerLayer *playerLayer = (AVPlayerLayer *) objc_getAssociatedObject(wallpaperView, &playerLayerKey);
@@ -43,10 +42,9 @@ void checkResourceFolder(UIViewController *presenterVC) {
 		// No existing playerLayer? Init
 		if (playerLayer == nil) {
 
-			// Setup Player.
-			Frame *player = [%c(Frame) shared];
+			// Setup FRAME.
 			// Note: Don't add wallpaperView into .contentView as it's irregularly framed.
-			playerLayer = [player addInView: wallpaperView isLockscreen: isLockscreenView];
+			playerLayer = [FRAME addInView: wallpaperView isLockscreen: isLockscreenView];
 			objc_setAssociatedObject(wallpaperView, &playerLayerKey, playerLayer, OBJC_ASSOCIATION_RETAIN);
 
 		}
@@ -69,10 +67,9 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			// We will also check if the user's configuration's erroneous.
 			static bool hasAlerted;
  			
-			Frame *player = [%c(Frame) shared];
 			// Alert user if Frame is active and settings is incompatible.
-			if (player.isTweakEnabled) {
-				if ([player requiresDifferentSystemWallpapers] && s.sharedWallpaperView != nil) {
+			if (FRAME.isTweakEnabled) {
+				if ([FRAME requiresDifferentSystemWallpapers] && s.sharedWallpaperView != nil) {
 					// Alert (once).
 					if (hasAlerted) return s;
 					// Setup alertVC and present.
@@ -178,35 +175,38 @@ void checkResourceFolder(UIViewController *presenterVC) {
 	%end
 
 	// Coordinate the Frame with SpringBoard.
-	// Pause player when an application opens.
-	// Resume player when the homescreen is shown.
+	// Pause FRAME when an application opens.
+	// Resume FRAME when the homescreen is shown.
 
 	%hook SpringBoard
+		void cancelCountdown(); // cancel home screen fade countdown (see far below)
+		void rescheduleCountdown();
 
 		// Control for enter / exit app.
 		- (void) frontDisplayDidChange: (id) newDisplay {
 			%orig;
-			Frame *player = [%c(Frame) shared];
-			if (newDisplay != nil) {
+						if (newDisplay != nil) {
 				// Only pause if we're entering an app and not just entering app-switcher.
 				if (!isInApp) {
 					// Entered app.
 					isInApp = true;
 					if (isOnLockscreen) {
 						// If the user immediately swiped down and now we're on lockscreen.
-						[player pauseHomescreen];
+						[FRAME pauseHomescreen];
 					}
 					else {
 						// Thankfully we're still in the app.
-						[player pauseHomescreen];
-						[player pauseSharedPlayer];
+						cancelCountdown();
+						[FRAME pauseHomescreen];
+						[FRAME pauseSharedPlayer];
 					}
 				}
 			}
 			else if (isInApp) {
 				// Left app.
+				rescheduleCountdown();
 				isInApp = false;
-				[player playHomescreen];
+				[FRAME playHomescreen];
 			}
 		}
 	%end
@@ -217,11 +217,10 @@ void checkResourceFolder(UIViewController *presenterVC) {
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
 
-			Frame *player = [%c(Frame) shared];
 			if (isOnLockscreen) // Play lockscreen.
-				[player playLockscreen];
-			else if (!isInApp || !player.pauseInApps) // Play homescreen if we're not in app OR player doesn't pause in apps.
-				[player playHomescreen];
+				[FRAME playLockscreen];
+			else if (!isInApp || !FRAME.pauseInApps) // Play homescreen if we're not in app OR FRAME doesn't pause in apps.
+				[FRAME playHomescreen];
 		}
 	%end
 
@@ -232,43 +231,19 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			SBLayoutStateTransitionContext *s = %orig;
 			SBLayoutState *from = s.fromLayoutState;
 			SBLayoutState *to = s.toLayoutState;
-			Frame *player = [%c(Frame) shared];
-			if (from.elements != nil && to.elements == nil) {
+						if (from.elements != nil && to.elements == nil) {
 				// Leaving an app.
 				if (isInApp) {
 					isInApp = NO;
-					[player playHomescreen];
+					[FRAME playHomescreen];
 				}
 			}
 			return s;
 		}
 	%end
 
-	// Sleep / wake controls.
-	%hook FBDisplayLayoutTransition
-
-		// More reliable control for sleep / wait.
-		// Accounts for cases where no wake animation is required.
-		-(void) setBacklightLevel: (long long) level {
-			%orig(level);
-			// Determine whether screen is on.
-			bool isAwake = level != 0.0;
-			// Update global var.
-			isAsleep = !isAwake;
-			// Play / pause.
-			Frame *player = [%c(Frame) shared];
-			if (isAwake) {
-				[player playLockscreen];
-			}
-			else {
-				[player pause];
-			}
-		}
-	
-	%end
-
 	// Control for lockscreen & coversheet.
-	// Resume player whenever coversheet will be shown.
+	// Resume FRAME whenever coversheet will be shown.
 	%hook CSCoverSheetViewController
 
 		// The cases for play/pause are divided into the will/did appear/disappear methods,
@@ -277,55 +252,145 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
-			isOnLockscreen = true;
-			Frame *player = [%c(Frame) shared];
+			setIsOnLockscreen(true);
 			// Ignore if this is triggered on sleep.
 			// Otherwise eagerly play.
 			if (!isAsleep) {
-				[player playLockscreen];
+				[FRAME playLockscreen];
 			}
 		}
 
 		- (void) viewDidAppear: (BOOL) animated {
 			%orig;
-			Frame *player = [%c(Frame) shared];
 			// Ignore if this is triggered on sleep.
 			if (!isAsleep) {
-				[player pauseHomescreen];
+				[FRAME pauseHomescreen];
 			}
 		}
 
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
-			Frame *player = [%c(Frame) shared];
-			if (!player.pauseInApps || !isInApp) {
-				[player playHomescreen];
+			if (!FRAME.pauseInApps || !isInApp) {
+				[FRAME playHomescreen];
 			}
 		}
 
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
-			isOnLockscreen = false;
-			Frame *player = [%c(Frame) shared];
-			[player pauseLockscreen];
-			// Additonal check to prevent situations where a shared player is set
+			setIsOnLockscreen(false);
+			[FRAME pauseLockscreen];
+			// Additonal check to prevent situations where a shared FRAME is set
 			// and when the user dismisses the cover sheet it doesn't stop playing.
-			if (isInApp && player.pauseInApps)
-				[player pauseSharedPlayer];				
+			if (isInApp && FRAME.pauseInApps)
+				[FRAME pauseSharedPlayer];				
 		}
 
 	%end
 
+	// The code below is for "Fade".
+	// The current HomeScreenViewController instance, should only be one.
+	UIView *iconsScrollView;
+	// Timer-managed on/off, coupled with hooking SBIconScrollView below.
+	// Also resource folder access checking.
 	%hook SBHomeScreenViewController
 
-		- (void) viewDidAppear: (bool) animated {
+	- (void) viewDidAppear: (bool) animated {
 			%orig;
-						
 			// Here we check the resource folder and alert user if there's an error.
 			static bool checkedFolder = false;
 			if (!checkedFolder) {
 				checkResourceFolder(self);
 				checkedFolder = true;
+			}
+		}
+		
+		// The countdown timer for debouncing the hide animation for the above VC.
+		NSTimer *timer;
+
+		// Functions.
+		void rescheduleCountdown() {
+			if (FRAME.enabled && FRAME.fadeEnabled) {
+				[timer invalidate];
+				timer = [NSTimer scheduledTimerWithTimeInterval: FRAME.fadeInactivity repeats: false block: ^(NSTimer *timer) {
+					[NSNotificationCenter.defaultCenter postNotificationName: @"Fade" object: @true userInfo: nil];
+				}];
+				[NSRunLoop.currentRunLoop addTimer: timer forMode: NSDefaultRunLoopMode];
+			}
+		}
+		void cancelCountdown() {
+			if (FRAME.enabled && FRAME.fadeEnabled) {
+				[timer invalidate];
+				timer = nil;
+				[NSNotificationCenter.defaultCenter postNotificationName: @"Fade" object: @false userInfo: nil];
+			}
+		}
+
+		void setIsOnLockscreen(bool v) {
+			// Check duplicative sets.
+			if (isOnLockscreen == v)
+				return;
+			
+			isOnLockscreen = v;
+			if (!isOnLockscreen && !isInApp) {
+				// Do something since we're on homescreen.
+				rescheduleCountdown();
+			}
+			else if (isOnLockscreen) {
+				cancelCountdown();
+			}
+		}
+
+		// Begin timer.
+		- (void) viewWillAppear: (bool) animated {
+			%orig;
+			rescheduleCountdown();
+		}
+
+		// Remove timer.
+		- (void) viewDidDisapper: (bool) animated {
+			%orig;
+			cancelCountdown();
+		}
+
+	%end
+	
+	// Receivers for fade/unfade notifications.
+	%hook SBIconListView 
+		- (void) didMoveToWindow {
+			%orig;
+			[NSNotificationCenter.defaultCenter addObserverForName: @"Fade" object: nil
+            queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
+				[UIView animateWithDuration: 0.3 animations: ^() {
+					self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0;
+				}];
+			}];
+		}
+	%end
+
+	// Touch-triggered timer delays, intercepted from the horizontal pan gesture recognizer.
+	%hook SBIconScrollView
+
+		- (void) didMoveToWindow {
+			%orig;
+			iconsScrollView = self;
+		}
+
+		- (void) addGestureRecognizer: (UIGestureRecognizer *) gestureRecognizer {
+			if ([gestureRecognizer isKindOfClass: [%c(UIPanGestureRecognizer) class]]
+					&& ((SBIconScrollView *) gestureRecognizer.delegate) == self) {
+				[gestureRecognizer addTarget: self action: @selector(didPan:)];
+			}
+			%orig;
+		}
+
+		%new
+		- (void) didPan: (UIGestureRecognizer *) gestureRecognizer {
+			if (gestureRecognizer.state == UIGestureRecognizerStateBegan) {
+				cancelCountdown();
+			}
+			else if (gestureRecognizer.state == UIGestureRecognizerStateEnded
+							|| gestureRecognizer.state == UIGestureRecognizerStateCancelled) {
+				rescheduleCountdown();
 			}
 		}
 
@@ -345,46 +410,86 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
-			isOnLockscreen = true;
-			Frame *player = [%c(Frame) shared];
-			// Ignore if this is triggered on sleep.
+			setIsOnLockscreen(true);
+						// Ignore if this is triggered on sleep.
 			// Otherwise eagerly play.
 			if (!isAsleep) {
-				[player playLockscreen];
+				[FRAME playLockscreen];
 			}
 		}
 
 		- (void) viewDidAppear: (BOOL) animated {
 			%orig;
-			Frame *player = [%c(Frame) shared];
-			// Ignore if this is triggered on sleep.
+						// Ignore if this is triggered on sleep.
 			if (!isAsleep) {
-				[player pauseHomescreen];
+				[FRAME pauseHomescreen];
 			}
 		}
 
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
-			Frame *player = [%c(Frame) shared];
-			if (!player.pauseInApps || !isInApp) {
-				[player playHomescreen];
+			if (!FRAME.pauseInApps || !isInApp) {
+				[FRAME playHomescreen];
 			}
 		}
 
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
-			isOnLockscreen = false;
-			Frame *player = [%c(Frame) shared];
-			// Pause if player's only enabled on lockscreen.
-			[player pauseLockscreen];
-			// Additonal check to prevent situations where a shared player is set
+			setIsOnLockscreen(false);
+						// Pause if FRAME's only enabled on lockscreen.
+			[FRAME pauseLockscreen];
+			// Additonal check to prevent situations where a shared FRAME is set
 			// and when the user dismisses the cover sheet it doesn't stop playing.
-			if (isInApp && player.pauseInApps)
-				[player pauseSharedPlayer];		
+			if (isInApp && FRAME.pauseInApps)
+				[FRAME pauseSharedPlayer];		
 		}
 
 	%end
 
+%end
+
+// Sleep/wake detection for iPads.
+%group iPad
+	// Sleep / wake controls.
+	%hook FBDisplayLayoutTransition
+
+		// More reliable control for sleep / wait.
+		// Accounts for cases where no wake animation is required.
+		-(void) setBacklightLevel: (long long) level {
+			%orig(level);
+			// Determine whether screen is on.
+			bool isAwake = level != 0.0;
+			// Update global var.
+			isAsleep = !isAwake;
+			// Play / pause.
+			if (isAwake) {
+				[FRAME playLockscreen];
+			}
+			else {
+				[FRAME pause];
+			}
+		}
+	
+	%end
+%end
+
+// Sleep/wake detection for iPhones.
+%group iPhone
+	%hook SBScreenWakeAnimationController
+		// Pause FRAME during sleep.
+		-(void) sleepForSource: (long long)arg1 target: (id)arg2 completion: (id)arg3 {
+			%orig;
+			isAsleep = YES;
+			[FRAME pause];
+		}
+		// Resume FRAME when awake.
+		// Note that this does not overlap with when coversheet appears.
+		-(void) prepareToWakeForSource: (long long)arg1 timeAlpha: (double)arg2 statusBarAlpha: (double)arg3 target: (id)arg4 completion: (id)arg5 {
+			%orig;
+			isAsleep = NO;
+			[FRAME playLockscreen];
+		}
+	%end
 %end
 
 void respringCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
@@ -392,7 +497,7 @@ void respringCallback(CFNotificationCenterRef center, void * observer, CFStringR
 }
 
 void videoChangedCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
-	[Frame.shared reloadPlayers];
+	[FRAME reloadPlayers];
 }
 
 // Fix permissions for users who've updated Frame.
@@ -401,14 +506,16 @@ void createResourceFolder() {
 
 	// Create frame's folder.
 	if (![NSFileManager.defaultManager fileExistsAtPath: frameFolder.path isDirectory: nil])
-			if (![NSFileManager.defaultManager createDirectoryAtPath: frameFolder.path withIntermediateDirectories: YES attributes: nil error: nil])
-					return;
+		if (![NSFileManager.defaultManager createDirectoryAtPath: frameFolder.path withIntermediateDirectories: YES attributes: nil error: nil])
+			return;
   
 	[NSFileManager.defaultManager setAttributes: @{ NSFilePosixPermissions: @511 } ofItemAtPath: frameFolder.path error: nil];
 }
 
 // Main
 %ctor {
+	dlopen("/usr/lib/LookinServer.framework/LookinServer", RTLD_NOW);
+
 	// Create the resource folder if necessary & update permissions.
 	createResourceFolder();
 
@@ -418,7 +525,14 @@ void createResourceFolder() {
 		%init(Fallback);
 	}
 
-	NSLog(@"[Frame]: Initialized %@", Frame.shared);
+	if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+		%init(iPad)
+	}
+	else {
+		%init(iPhone)
+	}
+
+	NSLog(@"[Frame]: Initialized %@", FRAME);
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();

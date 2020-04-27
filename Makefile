@@ -1,5 +1,5 @@
-TARGET = iphone:clang::12.1.99
-ARCHS = arm64 arm64e
+TARGET = iphone:clang:13.4:12.2.0
+ARCHS = arm64
 INSTALL_TARGET_PROCESSES = SpringBoard
 SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
 frame_FRAMEWORKS = UIKit AVFoundation
