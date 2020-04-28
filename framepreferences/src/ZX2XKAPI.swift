@@ -85,7 +85,7 @@ public struct IndexAPIResponse: Codable {
     public let allURL: String
     
     /// Convenience method to fetch a new response given a completion callback, optionally specifying an overriding api url.
-    public static func fetch(from url: URL = URL(string: "http://api-20180503.xkspbz.com/index.json")!,
+    public static func fetch(from url: URL = URL(string: "https://api-20200209.xkspbz.com/index.json")!,
                             completion: @escaping (IndexAPIResponse?, Error?)-> Void) {
         URLSession.shared.dataTask(with: url) { (data, _, error) in
             if error != nil {

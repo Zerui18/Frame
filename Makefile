@@ -1,8 +1,13 @@
-TARGET = iphone:clang:13.4:12.2.0
+# TARGET = simulator:clang:13.0:12.2.0
+# ARCHS = x86_64
+# SYSROOT = /Users/zeruichen/theos/sdks/iPhoneSimulator11.2.sdk
+
+TARGET = iphone:clang:13.0:12.2.0
 ARCHS = arm64
-INSTALL_TARGET_PROCESSES = SpringBoard
 SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
-frame_FRAMEWORKS = UIKit AVFoundation
+
+INSTALL_TARGET_PROCESSES = SpringBoard
+frame_FRAMEWORKS = Foundation UIKit AVFoundation
 
 include $(THEOS)/makefiles/common.mk
 

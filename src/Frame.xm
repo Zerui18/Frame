@@ -4,6 +4,7 @@
 #import "Utils.h"
 #import "AVPlayerLayer+Listen.h"
 
+void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 #define KVC_OBSERVE(keyPath) [bundleDefaults addObserver: self forKeyPath: keyPath options: NSKeyValueObservingOptionNew context: nil]
 #define POST_PLAYER_CHANGED(dict) [NSNotificationCenter.defaultCenter postNotificationName: @"PlayerChanged" object: nil userInfo: dict]
 
@@ -14,7 +15,8 @@
         static Frame *shared = nil;
         static dispatch_once_t onceToken;
         dispatch_once_on_main_thread(&onceToken, ^{
-            shared = [[self alloc] init];
+            shared = (id) [Frame alloc];
+            shared = [shared init];
         });
         return shared;
     }
@@ -31,7 +33,7 @@
                                             @"mutedHomescreen" : @true,
                                             @"pauseInApps" : @true,
                                             @"syncRingerVolume" : @true,
-                                            @"fadeEnabled" : @false,
+                                            @"fadeEnabled" : @true,
                                             @"fadeAlpha" : @0.05,
                                             @"fadeInactivity" : @4.0
                                             }];
@@ -89,7 +91,8 @@
     // Helper method that creates a looper-managed AVPlayer and returns the player.
     - (AVQueuePlayer *) createLoopedPlayerWithURL: (NSURL *) videoURL {
         // Init player, playerItem and looper.
-        AVQueuePlayer *player = [[AVQueuePlayer alloc] init];
+        AVQueuePlayer *player = [AVQueuePlayer alloc];
+        player = [player init];
         // Prevent airplay.
         player.allowsExternalPlayback = false;
         if (@available(iOS 12, *))
@@ -130,7 +133,7 @@
             if (homescreenVideoURL != nil) {
                 homescreenPlayer = [self createLoopedPlayerWithURL: homescreenVideoURL];
                 homescreenPlayer.muted = mutedHomescreen;
-                POST_PLAYER_CHANGED((@{ @"screen" : kHomescreen, @"player" : lockscreenPlayer }));
+                POST_PLAYER_CHANGED((@{ @"screen" : kHomescreen, @"player" : homescreenPlayer }));
             }
         }
 
@@ -214,8 +217,10 @@
         _enabled = flag;
         if (_enabled)
             [self reloadPlayers];
-        else
+        else {
             [self destroyPlayers];
+            cancelCountdown();
+        }
         
         // Only activate the audioSession when the tweak is enabled.
         // Thus, when the tweak is disabled the user can normally control the ringer volume.

@@ -185,24 +185,21 @@ void checkResourceFolder(UIViewController *presenterVC) {
 		// Control for enter / exit app.
 		- (void) frontDisplayDidChange: (id) newDisplay {
 			%orig;
-						if (newDisplay != nil) {
-				// Only pause if we're entering an app and not just entering app-switcher.
-				if (!isInApp) {
-					// Entered app.
-					isInApp = true;
-					if (isOnLockscreen) {
-						// If the user immediately swiped down and now we're on lockscreen.
-						[FRAME pauseHomescreen];
-					}
-					else {
-						// Thankfully we're still in the app.
-						cancelCountdown();
-						[FRAME pauseHomescreen];
-						[FRAME pauseSharedPlayer];
-					}
+			isInApp = newDisplay != nil;
+			if (isInApp) {
+				// Entered app.
+				if (isOnLockscreen) {
+					// If the user immediately swiped down and now we're on lockscreen.
+					[FRAME pauseHomescreen];
+				}
+				else {
+					// Thankfully we're still in the app.
+					cancelCountdown();
+					[FRAME pauseHomescreen];
+					[FRAME pauseSharedPlayer];
 				}
 			}
-			else if (isInApp) {
+			else {
 				// Left app.
 				rescheduleCountdown();
 				isInApp = false;
@@ -288,8 +285,7 @@ void checkResourceFolder(UIViewController *presenterVC) {
 	%end
 
 	// The code below is for "Fade".
-	// The current HomeScreenViewController instance, should only be one.
-	UIView *iconsScrollView;
+
 	// Timer-managed on/off, coupled with hooking SBIconScrollView below.
 	// Also resource folder access checking.
 	%hook SBHomeScreenViewController
@@ -372,17 +368,29 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 		- (void) didMoveToWindow {
 			%orig;
-			iconsScrollView = self;
+			// // Create a receiver obj and retain it.
+			// _Receiver *obj = [[_Receiver alloc] init];
+			// objc_setAssociatedObject(self, _cmd, obj, OBJC_ASSOCIATION_RETAIN);
+			// Add tap gesture.
+			[self addGestureRecognizer: [[UITapGestureRecognizer alloc] initWithTarget: self action: @selector(didTap:)]];
 		}
 
+		// Intercept the horizontal swipe gesture recognizer.
 		- (void) addGestureRecognizer: (UIGestureRecognizer *) gestureRecognizer {
 			if ([gestureRecognizer isKindOfClass: [%c(UIPanGestureRecognizer) class]]
 					&& ((SBIconScrollView *) gestureRecognizer.delegate) == self) {
+				// Attach also our action.
 				[gestureRecognizer addTarget: self action: @selector(didPan:)];
 			}
 			%orig;
 		}
 
+		- (void) touchesBegan: (NSSet<UITouch *> *) touches withEvent: (UIEvent *) event {
+			%orig;
+			cancelCountdown();
+		}
+
+		// Handle horizontal-pan-based unFade.
 		%new
 		- (void) didPan: (UIGestureRecognizer *) gestureRecognizer {
 			if (gestureRecognizer.state == UIGestureRecognizerStateBegan) {
@@ -394,6 +402,42 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			}
 		}
 
+		%new
+		- (void) didTap: (UIGestureRecognizer *) gestureRecognizer {
+			if (gestureRecognizer.state == UIGestureRecognizerStateEnded) {
+				cancelCountdown();
+				rescheduleCountdown();
+			}
+		}
+
+	%end
+
+	// Hook status bar with fade.
+	%hook _UIStatusBar
+		- (id) initWithStyle: (long long) arg1 {
+			[NSNotificationCenter.defaultCenter addObserverForName: @"Fade" object: nil
+            queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
+				[UIView animateWithDuration: 0.3 animations: ^() {
+					self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0;
+				}];
+			}];
+			return %orig;
+		}
+	%end
+
+	// Hook this for info on apps/folders opening/closing.
+	%hook SBIconController
+		// iOS 13+
+		-(void) iconManager: (id) arg1 willCloseFolder: (id) arg2 {
+			%orig;
+			rescheduleCountdown();
+		}
+
+		// iOS 12 and below
+		-(void) closeFolderAnimated: (BOOL) arg1 withCompletion: (id) arg2 {
+			%orig;
+			rescheduleCountdown();
+		}
 	%end
 
 %end
