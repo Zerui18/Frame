@@ -116,15 +116,15 @@
 			<key>default</key>
 			<real>0.05</real>
 			<key>min</key>
-			<real>0.05</real>
+			<real>0</real>
 			<key>max</key>
-			<real>0.95</real>
+			<real>0.80</real>
 			<key>showValue</key>
 			<true/>
 			<key>isSegmented</key>
 			<true/>
 			<key>segmentCount</key>
-			<integer>18</integer>
+			<integer>15</integer>
 			<key>defaults</key>
 			<string>com.Zerui.framepreferences</string>
 			<key>key</key>
