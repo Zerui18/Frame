@@ -33,7 +33,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
                                             @"mutedHomescreen" : @true,
                                             @"pauseInApps" : @true,
                                             @"syncRingerVolume" : @true,
-                                            @"fadeEnabled" : @true,
+                                            @"fadeEnabled" : @false,
                                             @"fadeAlpha" : @0.05,
                                             @"fadeInactivity" : @4.0
                                             }];
@@ -195,7 +195,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 
         ELIF_KEYPATH(@"fadeAlpha", self.fadeAlpha = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];)
 
-        ELIF_KEYPATH(@"fadeInactivity", NSLog(@"dur = %f s", [[change valueForKey: NSKeyValueChangeNewKey] floatValue]); self.fadeInactivity = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];)
+        ELIF_KEYPATH(@"fadeInactivity", self.fadeInactivity = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];)
     }
 
     // Setter for pauseInApps.

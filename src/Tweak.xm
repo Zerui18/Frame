@@ -25,7 +25,7 @@ void checkResourceFolder(UIViewController *presenterVC) {
 													message: @"Resource folder can't be accessed."
 													preferredStyle: UIAlertControllerStyleAlert];
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Details" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *action) {
-			[[UIApplication sharedApplication] openURL: [NSURL URLWithString: @"https://zerui18.github.io/ZX02#err=frame.resAccess"] options:@{} completionHandler: nil];
+			[[UIApplication sharedApplication] openURL: [NSURL URLWithString: @"https://zerui18.github.io/zx02#err=frame.resAccess"] options:@{} completionHandler: nil];
 		}]];
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Ignore" style: UIAlertActionStyleCancel handler: nil]];
 		[presenterVC presentViewController: alertVC animated: true completion: nil];
@@ -351,14 +351,19 @@ void checkResourceFolder(UIViewController *presenterVC) {
 	%end
 	
 	// Receivers for fade/unfade notifications.
-	%hook SBIconListView 
+	%hook SBIconListView
+
 		- (void) didMoveToWindow {
 			%orig;
-			[NSNotificationCenter.defaultCenter addObserverForName: @"Fade" object: nil
-            queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
-				[UIView animateWithDuration: 0.3 animations: ^() {
-					self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0;
-				}];
+			if ([self respondsToSelector: @selector(setAlpha:)]) {
+				[NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil];
+			}
+		}
+
+		%new
+		- (void) fade: (NSNotification *) notification {
+			[UIView animateWithDuration: 0.3 animations: ^() {
+				self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0;
 			}];
 		}
 	%end
@@ -368,9 +373,6 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 		- (void) didMoveToWindow {
 			%orig;
-			// // Create a receiver obj and retain it.
-			// _Receiver *obj = [[_Receiver alloc] init];
-			// objc_setAssociatedObject(self, _cmd, obj, OBJC_ASSOCIATION_RETAIN);
 			// Add tap gesture.
 			[self addGestureRecognizer: [[UITapGestureRecognizer alloc] initWithTarget: self action: @selector(didTap:)]];
 		}
@@ -415,14 +417,19 @@ void checkResourceFolder(UIViewController *presenterVC) {
 	// Hook status bar with fade.
 	%hook _UIStatusBar
 		- (id) initWithStyle: (long long) arg1 {
-			[NSNotificationCenter.defaultCenter addObserverForName: @"Fade" object: nil
-            queue: NSOperationQueue.mainQueue usingBlock: ^(NSNotification *notification) {
-				[UIView animateWithDuration: 0.3 animations: ^() {
-					self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0;
-				}];
-			}];
+			if ([self respondsToSelector: @selector(setAlpha:)]) {
+				[NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil];
+			}
 			return %orig;
 		}
+
+		%new
+		- (void) fade: (NSNotification *) notification {
+			[UIView animateWithDuration: 0.3 animations: ^() {
+				self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0;
+			}];
+		}
+
 	%end
 
 	// Hook this for info on apps/folders opening/closing.
@@ -558,7 +565,7 @@ void createResourceFolder() {
 
 // Main
 %ctor {
-	dlopen("/usr/lib/LookinServer.framework/LookinServer", RTLD_NOW);
+	// dlopen("/usr/lib/LookinServer.framework/LookinServer", RTLD_NOW);
 
 	// Create the resource folder if necessary & update permissions.
 	createResourceFolder();

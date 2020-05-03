@@ -17,7 +17,7 @@ void checkResourceFolder(UIViewController *presenterVC) {
 													message: @"Resource folder can't be accessed."
 													preferredStyle: UIAlertControllerStyleAlert];
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Details" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *action) {
-			[[UIApplication sharedApplication] openURL: [NSURL URLWithString:@"https://zerui18.github.io/ZX02#err=frame.resAccess"] options:@{} completionHandler: nil];
+			[[UIApplication sharedApplication] openURL: [NSURL URLWithString:@"https://zerui18.github.io/zx02#err=frame.resAccess"] options:@{} completionHandler: nil];
 		}]];
 		[alertVC addAction: [UIAlertAction actionWithTitle: @"Ignore" style: UIAlertActionStyleCancel handler: nil]];
 		[presenterVC presentViewController: alertVC animated: true completion: nil];
