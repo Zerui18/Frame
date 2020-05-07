@@ -1,12 +1,13 @@
 #import <AVFoundation/AVFoundation.h>
 #import <version.h>
 #import <substrate.h>
-#include <dlfcn.h>
+#import <dlfcn.h>
 #import "FBSystemService.h"
 #import "SpringBoard.h"
 #import "Globals.h"
 #import "Frame.h"
 #import "UIView+.h"
+#import "DeviceStates.h"
 
 // MARK: Main Tweak
 void const *playerLayerKey;
@@ -137,7 +138,7 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			%orig;
 
 			// Repairs the reachability blur view when activated from the home screen.
-			if (!isInApp && [self.window isKindOfClass: [%c(SBReachabilityWindow) class]]) {
+			if (!IS_IN_APP && [self.window isKindOfClass: [%c(SBReachabilityWindow) class]]) {
 				// Remove the stock blur view.
 				self.subviews.firstObject &&
 					(self.subviews.firstObject.hidden = true);
@@ -182,29 +183,10 @@ void checkResourceFolder(UIViewController *presenterVC) {
 		void cancelCountdown(); // cancel home screen fade countdown (see far below)
 		void rescheduleCountdown();
 
-		// Control for enter / exit app.
+		// Rather reliable mechanism for tracking IS_IN_APP.
 		- (void) frontDisplayDidChange: (id) newDisplay {
 			%orig;
-			isInApp = newDisplay != nil;
-			if (isInApp) {
-				// Entered app.
-				if (isOnLockscreen) {
-					// If the user immediately swiped down and now we're on lockscreen.
-					[FRAME pauseHomescreen];
-				}
-				else {
-					// Thankfully we're still in the app.
-					cancelCountdown();
-					[FRAME pauseHomescreen];
-					[FRAME pauseSharedPlayer];
-				}
-			}
-			else {
-				// Left app.
-				rescheduleCountdown();
-				isInApp = false;
-				[FRAME playHomescreen];
-			}
+			IS_IN_APP = newDisplay != nil;
 		}
 	%end
 
@@ -214,9 +196,9 @@ void checkResourceFolder(UIViewController *presenterVC) {
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
 
-			if (isOnLockscreen) // Play lockscreen.
+			if (IS_ON_LOCKSCREEN) // Play lockscreen.
 				[FRAME playLockscreen];
-			else if (!isInApp || !FRAME.pauseInApps) // Play homescreen if we're not in app OR FRAME doesn't pause in apps.
+			else if (!IS_IN_APP || !FRAME.pauseInApps) // Play homescreen if we're not in app OR FRAME doesn't pause in apps.
 				[FRAME playHomescreen];
 		}
 	%end
@@ -228,12 +210,8 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			SBLayoutStateTransitionContext *s = %orig;
 			SBLayoutState *from = s.fromLayoutState;
 			SBLayoutState *to = s.toLayoutState;
-						if (from.elements != nil && to.elements == nil) {
-				// Leaving an app.
-				if (isInApp) {
-					isInApp = NO;
-					[FRAME playHomescreen];
-				}
+			if (from.elements != nil && to.elements == nil) {
+				IS_IN_APP = false;
 			}
 			return s;
 		}
@@ -249,37 +227,28 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
-			setIsOnLockscreen(true);
-			// Ignore if this is triggered on sleep.
-			// Otherwise eagerly play.
-			if (!isAsleep) {
-				[FRAME playLockscreen];
-			}
+			IS_ON_LOCKSCREEN = true;
 		}
 
 		- (void) viewDidAppear: (BOOL) animated {
 			%orig;
-			// Ignore if this is triggered on sleep.
-			if (!isAsleep) {
-				[FRAME pauseHomescreen];
-			}
+			[FRAME pauseHomescreen];
 		}
 
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
-			if (!FRAME.pauseInApps || !isInApp) {
+			if (!FRAME.pauseInApps || !IS_IN_APP) {
 				[FRAME playHomescreen];
 			}
 		}
 
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
-			setIsOnLockscreen(false);
-			[FRAME pauseLockscreen];
+			IS_ON_LOCKSCREEN = false;
 			// Additonal check to prevent situations where a shared FRAME is set
 			// and when the user dismisses the cover sheet it doesn't stop playing.
-			if (isInApp && FRAME.pauseInApps)
-				[FRAME pauseSharedPlayer];				
+			if (IS_IN_APP && FRAME.pauseInApps)
+				[FRAME pauseSharedPlayer];
 		}
 
 	%end
@@ -321,21 +290,6 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			}
 		}
 
-		void setIsOnLockscreen(bool v) {
-			// Check duplicative sets.
-			if (isOnLockscreen == v)
-				return;
-			
-			isOnLockscreen = v;
-			if (!isOnLockscreen && !isInApp) {
-				// Do something since we're on homescreen.
-				rescheduleCountdown();
-			}
-			else if (isOnLockscreen) {
-				cancelCountdown();
-			}
-		}
-
 		// Begin timer.
 		- (void) viewWillAppear: (bool) animated {
 			%orig;
@@ -374,7 +328,9 @@ void checkResourceFolder(UIViewController *presenterVC) {
 		- (void) didMoveToWindow {
 			%orig;
 			// Add tap gesture.
-			[self addGestureRecognizer: [[UITapGestureRecognizer alloc] initWithTarget: self action: @selector(didTap:)]];
+			UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget: self action: @selector(didTap:)];
+			tap.cancelsTouchesInView = false;
+			[self addGestureRecognizer: tap];
 		}
 
 		// Intercept the horizontal swipe gesture recognizer.
@@ -407,6 +363,8 @@ void checkResourceFolder(UIViewController *presenterVC) {
 		%new
 		- (void) didTap: (UIGestureRecognizer *) gestureRecognizer {
 			if (gestureRecognizer.state == UIGestureRecognizerStateEnded) {
+				// Temporary trigger for play.
+				[FRAME forcePlayHomescreen];
 				cancelCountdown();
 				rescheduleCountdown();
 			}
@@ -461,38 +419,28 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
-			setIsOnLockscreen(true);
-						// Ignore if this is triggered on sleep.
-			// Otherwise eagerly play.
-			if (!isAsleep) {
-				[FRAME playLockscreen];
-			}
+			IS_ON_LOCKSCREEN = true;
 		}
 
 		- (void) viewDidAppear: (BOOL) animated {
 			%orig;
-						// Ignore if this is triggered on sleep.
-			if (!isAsleep) {
-				[FRAME pauseHomescreen];
-			}
+			[FRAME pauseHomescreen];
 		}
 
 		- (void) viewWillDisappear: (BOOL) animated {
 			%orig;
-			if (!FRAME.pauseInApps || !isInApp) {
+			if (!FRAME.pauseInApps || !IS_IN_APP) {
 				[FRAME playHomescreen];
 			}
 		}
 
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
-			setIsOnLockscreen(false);
-						// Pause if FRAME's only enabled on lockscreen.
-			[FRAME pauseLockscreen];
+			IS_ON_LOCKSCREEN = false;
 			// Additonal check to prevent situations where a shared FRAME is set
 			// and when the user dismisses the cover sheet it doesn't stop playing.
-			if (isInApp && FRAME.pauseInApps)
-				[FRAME pauseSharedPlayer];		
+			if (IS_IN_APP && FRAME.pauseInApps)
+				[FRAME pauseSharedPlayer];
 		}
 
 	%end
@@ -510,15 +458,8 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			%orig(level);
 			// Determine whether screen is on.
 			bool isAwake = level != 0.0;
-			// Update global var.
-			isAsleep = !isAwake;
-			// Play / pause.
-			if (isAwake) {
-				[FRAME playLockscreen];
-			}
-			else {
-				[FRAME pause];
-			}
+			// Update IS_ASLEEP.
+			IS_ASLEEP = !isAwake;
 		}
 	
 	%end
@@ -527,18 +468,14 @@ void checkResourceFolder(UIViewController *presenterVC) {
 // Sleep/wake detection for iPhones.
 %group iPhone
 	%hook SBScreenWakeAnimationController
-		// Pause FRAME during sleep.
 		-(void) sleepForSource: (long long)arg1 target: (id)arg2 completion: (id)arg3 {
 			%orig;
-			isAsleep = YES;
-			[FRAME pause];
+			IS_ASLEEP = true;
 		}
-		// Resume FRAME when awake.
 		// Note that this does not overlap with when coversheet appears.
 		-(void) prepareToWakeForSource: (long long)arg1 timeAlpha: (double)arg2 statusBarAlpha: (double)arg3 target: (id)arg4 completion: (id)arg5 {
 			%orig;
-			isAsleep = NO;
-			[FRAME playLockscreen];
+			IS_ASLEEP = false;
 		}
 	%end
 %end

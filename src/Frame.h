@@ -1,10 +1,11 @@
 #import <AVFoundation/AVFoundation.h>
+#import "SpringBoard.h"
 
 // Logical container for the AVQueuePlayer used in this tweak.
 // Manages a single instance of AVQueuePlayer that's controlled by the AVPlayerLooper.
 // Adds AVPlayerLayer to the provided views.
 
-#define FRAME ((Frame *)[Frame shared])
+#define FRAME [Frame shared]
 
 @interface Frame : NSObject {
     NSUserDefaults *bundleDefaults;
@@ -27,11 +28,12 @@
 @property(setter=setPauseInApps:, nonatomic) bool pauseInApps;
 @property(setter=setEnabled:, nonatomic) bool enabled;
 
-+ (id) shared;
++ (Frame *) shared;
 - (bool) isTweakEnabled;
 - (void) reloadPlayers;
 - (AVPlayerLayer *) addInView: (SBFWallpaperView *) superview isLockscreen: (bool) isLockscreen;
 - (void) playHomescreen;
+- (void) forcePlayHomescreen;
 - (void) playLockscreen;
 - (void) pauseLockscreen;
 - (void) pauseHomescreen;

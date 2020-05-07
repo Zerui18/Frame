@@ -1,5 +1,6 @@
-#import "SpringBoard.h"
 #import "Frame.h"
+#import "SpringBoard.h"
+#import "DeviceStates.h"
 #import "Globals.h"
 #import "Utils.h"
 #import "AVPlayerLayer+Listen.h"
@@ -11,12 +12,11 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 @implementation Frame
 
     // Shared singleton.
-    + (id) shared {
+    + (Frame *) shared {
         static Frame *shared = nil;
         static dispatch_once_t onceToken;
         dispatch_once_on_main_thread(&onceToken, ^{
-            shared = (id) [Frame alloc];
-            shared = [shared init];
+            shared = [[Frame alloc] init];
         });
         return shared;
     }
@@ -138,10 +138,10 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         }
 
         // Play if possible.
-        if (isOnLockscreen) {
+        if (IS_ON_LOCKSCREEN) {
             [self playLockscreen];
         }
-        else if (!isInApp || !self.pauseInApps) {
+        else if (!IS_IN_APP || !self.pauseInApps) {
             [self playHomescreen];
         }
     }
@@ -203,9 +203,9 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         _pauseInApps = flag;
 
         // Update players' states accordingly.
-        if (flag && isInApp)
+        if (flag && IS_IN_APP)
             [self pause];
-        else if (!flag && isInApp)
+        else if (!flag && IS_IN_APP)
             [self playHomescreen];
     }
 
@@ -250,9 +250,10 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         return playerLayer;
     }
     
-    // Play, prefers sharedPlayer and checks if isAsleep.
+    // Play, prefers sharedPlayer and checks if IS_ASLEEP.
     - (void) playLockscreen {
-        if (isAsleep)
+        NSLog(@"Play Lockscreen: IS_ASLEEP = %@", [@(IS_ASLEEP) description]);
+        if (IS_ASLEEP)
             return;
 
         // Update muted property if sharedPlayer is being used.
@@ -265,9 +266,18 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
     }
 
     - (void) playHomescreen {
-        if (isAsleep)
+        if (IS_ASLEEP)
             return;
         
+        if (sharedPlayer != nil){
+            sharedPlayer.muted = mutedHomescreen;
+            [sharedPlayer play];
+        }
+        else
+            [homescreenPlayer play];
+    }
+
+    - (void) forcePlayHomescreen {
         if (sharedPlayer != nil){
             sharedPlayer.muted = mutedHomescreen;
             [sharedPlayer play];
