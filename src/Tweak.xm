@@ -77,7 +77,10 @@ void checkResourceFolder(UIViewController *presenterVC) {
 					UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
 													message: @"You have chosen different videos for lockscreen & homescreen, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect."
 													preferredStyle: UIAlertControllerStyleAlert];
-					[alertVC addAction: [UIAlertAction actionWithTitle: @"OK" style: UIAlertActionStyleDefault handler: nil]];
+					[alertVC addAction: [UIAlertAction actionWithTitle: @"Details" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *action) {
+						[[UIApplication sharedApplication] openURL: [NSURL URLWithString: @"https://zerui18.github.io/zx02#err=frame.sysConfig"] options:@{} completionHandler: nil];
+					}]];
+					[alertVC addAction: [UIAlertAction actionWithTitle: @"Ignore" style: UIAlertActionStyleCancel handler: nil]];
 					UIViewController *presenterVC = UIApplication.sharedApplication.windows.firstObject.rootViewController;
 					if (presenterVC != nil) {
 						[presenterVC presentViewController: alertVC animated: true completion: nil], hasAlerted = true;
