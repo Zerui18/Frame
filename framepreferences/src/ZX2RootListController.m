@@ -51,7 +51,7 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 	- (void) respring {
 		CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-		CFStringRef str = (__bridge CFStringRef) @"com.ZX02.framepreferences.respring";
+		CFStringRef str = (__bridge CFStringRef) @"com.zx02.framepreferences.respring";
 		CFNotificationCenterPostNotification(center, str, nil, nil, true);
 	}
 

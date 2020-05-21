@@ -89,20 +89,27 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
     }
 
     // Helper method that creates a looper-managed AVPlayer and returns the player.
-    - (AVQueuePlayer *) createLoopedPlayerWithURL: (NSURL *) videoURL {
-        // Init player, playerItem and looper.
-        AVQueuePlayer *player = [AVQueuePlayer alloc];
-        player = [player init];
+    - (AVPlayer *) createLoopedPlayerWithURL: (NSURL *) videoURL {
+        AVPlayerItem *item = [AVPlayerItem playerItemWithURL: videoURL];
+        AVPlayer *player = [AVPlayer playerWithPlayerItem: item];
         // Prevent airplay.
         player.allowsExternalPlayback = false;
         if (@available(iOS 12, *))
             player.preventsDisplaySleepDuringVideoPlayback = false;
-        AVPlayerItem *item = [AVPlayerItem playerItemWithURL: videoURL];
-        AVPlayerLooper *looper = [AVPlayerLooper playerLooperWithPlayer: player templateItem: item];
-
-        // Have the player retain the looper.
-        objc_setAssociatedObject(player, _cmd, looper, OBJC_ASSOCIATION_RETAIN);
-
+        // Begin observing for playback ending.
+        __weak AVPlayer *playerWeak = player;
+        [NSNotificationCenter.defaultCenter addObserverForName: AVPlayerItemDidPlayToEndTimeNotification object: nil queue: nil
+            usingBlock: ^(NSNotification *notification){
+            // Prepare for comparison.
+            AVPlayer *playerStrong = playerWeak;
+            AVPlayerItem *item = (AVPlayerItem *) notification.object;
+            // Check if the item belongs to the current player.
+            if (item == playerStrong.currentItem) {
+                // Yes? Seek and play.
+                [playerStrong seekToTime: kCMTimeZero toleranceBefore: kCMTimeZero toleranceAfter: kCMTimeZero];
+                [playerStrong play];
+            }
+        }];
         return player;
     }
 
@@ -148,11 +155,6 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 
     // Destruct all players and clear playerLayers.
     - (void) destroyPlayers {
-
-        [sharedPlayer removeAllItems];
-        [lockscreenPlayer removeAllItems];
-        [homescreenPlayer removeAllItems];
-
         sharedPlayer = nil;
         lockscreenPlayer = nil;
         homescreenPlayer = nil;
@@ -221,10 +223,6 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
             [self destroyPlayers];
             cancelCountdown();
         }
-        
-        // Only activate the audioSession when the tweak is enabled.
-        // Thus, when the tweak is disabled the user can normally control the ringer volume.
-        [audioSession setActive: _enabled withOptions: nil error: nil];
     }
 
     // MARK: Public API
@@ -234,7 +232,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         
         // Determine which player to add.
         // Always choose sharedPlayer if available, otherwise get the appropriate player.
-        AVQueuePlayer *player = sharedPlayer != nil ? sharedPlayer : (isLockscreen ? lockscreenPlayer : homescreenPlayer);
+        AVPlayer *player = sharedPlayer != nil ? sharedPlayer : (isLockscreen ? lockscreenPlayer : homescreenPlayer);
         
         // Setups...
         AVPlayerLayer *playerLayer = [AVPlayerLayer playerLayerWithPlayer: player];
@@ -252,7 +250,6 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
     
     // Play, prefers sharedPlayer and checks if IS_ASLEEP.
     - (void) playLockscreen {
-        NSLog(@"Play Lockscreen: IS_ASLEEP = %@", [@(IS_ASLEEP) description]);
         if (IS_ASLEEP)
             return;
 

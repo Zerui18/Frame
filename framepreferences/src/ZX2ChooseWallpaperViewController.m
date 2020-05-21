@@ -392,7 +392,7 @@
 
 	- (void) notifyFrame {
 		CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-		NSString *name = @"com.ZX02.framepreferences.videoChanged";
+		NSString *name = @"com.zx02.framepreferences.videoChanged";
 		CFStringRef str = (__bridge CFStringRef) name;
 		CFNotificationCenterPostNotification(center, str, nil, nil, YES);
 	}

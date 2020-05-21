@@ -1,8 +1,8 @@
 #import <AVFoundation/AVFoundation.h>
 #import "SpringBoard.h"
 
-// Logical container for the AVQueuePlayer used in this tweak.
-// Manages a single instance of AVQueuePlayer that's controlled by the AVPlayerLooper.
+// Logical container for the AVPlayer used in this tweak.
+// Manages a single instance of AVPlayer that's controlled by the AVPlayerLooper.
 // Adds AVPlayerLayer to the provided views.
 
 #define FRAME [Frame shared]
@@ -11,9 +11,9 @@
     NSUserDefaults *bundleDefaults;
     AVAudioSession *audioSession;
 
-    AVQueuePlayer *sharedPlayer;
-    AVQueuePlayer *lockscreenPlayer;
-    AVQueuePlayer *homescreenPlayer;
+    AVPlayer *sharedPlayer;
+    AVPlayer *lockscreenPlayer;
+    AVPlayer *homescreenPlayer;
 
     bool mutedLockscreen;
     bool mutedHomescreen;
@@ -30,6 +30,7 @@
 
 + (Frame *) shared;
 - (bool) isTweakEnabled;
+- (void) destroyPlayers;
 - (void) reloadPlayers;
 - (AVPlayerLayer *) addInView: (SBFWallpaperView *) superview isLockscreen: (bool) isLockscreen;
 - (void) playHomescreen;

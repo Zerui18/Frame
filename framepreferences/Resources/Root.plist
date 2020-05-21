@@ -124,7 +124,7 @@
 			<key>isSegmented</key>
 			<true/>
 			<key>segmentCount</key>
-			<integer>15</integer>
+			<integer>16</integer>
 			<key>defaults</key>
 			<string>com.Zerui.framepreferences</string>
 			<key>key</key>

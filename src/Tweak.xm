@@ -527,6 +527,6 @@ void createResourceFolder() {
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-	CFNotificationCenterAddObserver(center, nil, respringCallback, CFSTR("com.ZX02.framepreferences.respring"), nil, nil);
-	CFNotificationCenterAddObserver(center, nil, videoChangedCallback, CFSTR("com.ZX02.framepreferences.videoChanged"), nil, nil);
+	CFNotificationCenterAddObserver(center, nil, respringCallback, CFSTR("com.zx02.framepreferences.respring"), nil, nil);
+	CFNotificationCenterAddObserver(center, nil, videoChangedCallback, CFSTR("com.zx02.framepreferences.videoChanged"), nil, nil);
 }
