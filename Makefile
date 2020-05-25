@@ -12,7 +12,7 @@ else
 	SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
 endif
 
-PACKAGE_VERSION = 2.2.0
+PACKAGE_VERSION = 2.3.0
 
 INSTALL_TARGET_PROCESSES = SpringBoard
 frame_FRAMEWORKS = Foundation UIKit AVFoundation

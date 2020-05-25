@@ -106,7 +106,7 @@
 		[chooseWallpaperButton addTarget: self action: @selector(chooseVideo) forControlEvents: UIControlEventTouchUpInside];
 
 		getWallpaperButton.backgroundColor = getBtnBgColor;
-		[getWallpaperButton setTitle: @"Get Video" forState: UIControlStateNormal];
+		[getWallpaperButton setTitle: @"Catalogue" forState: UIControlStateNormal];
 		[getWallpaperButton setTitleColor: UIColor.whiteColor forState: UIControlStateNormal];
 		[getWallpaperButton setTitleColor: UIColor.lightGrayColor forState: UIControlStateHighlighted];
 		getWallpaperButton.titleLabel.font = [UIFont systemFontOfSize: 24 weight: UIFontWeightMedium];
@@ -203,7 +203,7 @@
 		// More videos label.
 		moreVideosLabel.translatesAutoresizingMaskIntoConstraints = false;
 		[self.view addSubview: moreVideosLabel];
-		[moreVideosLabel.topAnchor constraintEqualToAnchor: getWallpaperButton.bottomAnchor constant: 12].active = true;
+		[moreVideosLabel.topAnchor constraintEqualToAnchor: getWallpaperButton.bottomAnchor constant: 32].active = true;
 		[moreVideosLabel.centerXAnchor constraintEqualToAnchor: self.view.centerXAnchor].active = true;
 
 		[self.view layoutIfNeeded];
@@ -253,7 +253,8 @@
 
 	// Push WallpaperListingViewController.
 	- (void) presentWallpaperListing {
-		PSViewController *vc = (PSViewController *) [[NSClassFromString(@"ZX2WallpaperListingViewController") alloc] init];
+		id vc = [[NSClassFromString(@"ZX2WallpaperListingViewController") alloc] init];
+		[vc performSelector: @selector(setChooseVC:) withObject: self];
 		[self pushController: vc animate: true];
 	}
 

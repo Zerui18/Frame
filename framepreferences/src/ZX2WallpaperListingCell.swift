@@ -2,18 +2,15 @@ import UIKit
 
 class ZX2WallpaperListingCell: UICollectionViewCell {
 
-  /// The videoItem that is represented by this cell.
-  var videoItem: ListingAPIResponse.Item! {
+  /// The wpItem that is represented by this cell.
+  var wpItem: ListingItemRepresentable! {
     didSet {
-      videoItem.imageURL.flatMap {
-        let options = ImageLoadingOptions(
-            transition: .fadeIn(duration: 0.33)
-          )
-        loadImage(with: $0, options: options, into: self.thumbnailView)
-        self.nameLabel.text = videoItem.name
-        let sizeString = videoItem.size.split(separator: "\n").first ?? ""
-        self.authorLabel.text = String(sizeString)
-      }
+      let options = ImageLoadingOptions(
+          transition: .fadeIn(duration: 0.33)
+        )
+      loadImage(with: wpItem.imageURL, options: options, into: self.thumbnailView)
+      self.nameLabel.text = wpItem.name
+      self.authorLabel.text = wpItem.sizeString
     }
   }
   

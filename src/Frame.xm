@@ -248,11 +248,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         return playerLayer;
     }
     
-    // Play, prefers sharedPlayer and checks if IS_ASLEEP.
     - (void) playLockscreen {
-        if (IS_ASLEEP)
-            return;
-
         // Update muted property if sharedPlayer is being used.
         if (sharedPlayer != nil) {
             sharedPlayer.muted = mutedLockscreen;
@@ -263,9 +259,6 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
     }
 
     - (void) playHomescreen {
-        if (IS_ASLEEP)
-            return;
-        
         if (sharedPlayer != nil){
             sharedPlayer.muted = mutedHomescreen;
             [sharedPlayer play];

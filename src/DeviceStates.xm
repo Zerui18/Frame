@@ -1,3 +1,4 @@
+#include <notify.h>
 #import "DeviceStates.h"
 #import "Frame.h"
 
@@ -16,6 +17,16 @@ void rescheduleCountdown();
     _asleep = false;
     _inApp = false;
     _onLockscreen = true;
+    // Listen for sleep / wake changes.
+    static uint64_t state;
+    static int notifyToken;
+    notify_register_dispatch("com.apple.springboard.hasBlankedScreen",
+                              &notifyToken,
+                              dispatch_get_main_queue(), ^(int t) {
+                              notify_get_state(notifyToken, &state);
+                              IS_ASLEEP = state != 0;
+                              NSLog(@"isAsleep: %s", IS_ASLEEP ? "yes" : "no");
+                              });
     return self;
   }
 

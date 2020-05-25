@@ -53,10 +53,12 @@ class ColumnFlowLayout: UICollectionViewFlowLayout {
 @objc(ZX2WallpaperListingViewController)
 public class ZX2WallpaperListingViewController : PSViewController {
 
+  @objc public var chooseVC: ZX2ChooseWallpaperViewController!
+
   /// The segmentedControl displaying the available categories.
   private let segmentedControl = PinterestSegment(frame: .zero)
 
-  /// The collectionView displaying the thumbnail images for the videos.
+  /// The collectionView displaying the wallpapers.
   private lazy var collectionView: UICollectionView = {
     let isPad = UIDevice.current.userInterfaceIdiom == .pad
     let spacing: CGFloat = isPad ? 16.0 : 8.0
@@ -107,7 +109,7 @@ public class ZX2WallpaperListingViewController : PSViewController {
       view.backgroundColor = .white
     }
     navigationItem.title = "Catalogue"
-    navigationItem.rightBarButtonItem = UIBarButtonItem()
+    navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .organize, target: self, action: #selector(self.organizeTapped(_:)))
 
     segmentedControl.translatesAutoresizingMaskIntoConstraints = false
     // Refresh upon selection changed.
@@ -203,6 +205,12 @@ public class ZX2WallpaperListingViewController : PSViewController {
     }
   }
 
+  @objc private func organizeTapped(_ sender: UIBarButtonItem) {
+    let vc = ZX2DownloadsViewController()
+    vc.chooseVC = self.chooseVC
+    push(vc, animate: true)
+  }
+
 }
 
 extension ZX2WallpaperListingViewController: UICollectionViewDataSource, UICollectionViewDelegate {
@@ -213,76 +221,73 @@ extension ZX2WallpaperListingViewController: UICollectionViewDataSource, UIColle
 
   public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
     let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! ZX2WallpaperListingCell
-    cell.videoItem = listingAPIResponse!.items[indexPath.item]
+    cell.wpItem = listingAPIResponse!.items[indexPath.item]
     return cell
   }
 
   public func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-    let videoItem = listingAPIResponse!.items[indexPath.item]
-    if let videoURL = videoItem.videoURL {
-      // Ask the user which action to take.
-      let sizeString = videoItem.size.split(separator: "\n").last ?? "??"
-      let alertVC = UIAlertController(title: videoItem.name, message: "Size: \(sizeString)", preferredStyle: .alert)
-      // Preview in an AVPlayerViewController.
-      alertVC.addAction(UIAlertAction(title: "Preview", style: .default) { _ in
-        let player = AVPlayer(url: videoURL)
-        let playerVC = AVPlayerViewController()
-        playerVC.player = player
-        self.present(playerVC, animated: true)
-      })
-      // Download.
-      alertVC.addAction(UIAlertAction(title: "Download", style: .default) { _ in
-        self.downloadVideo(forItem: videoItem)
-      })
-      // Cancel.
-      alertVC.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-      // Present alert.
-      self.present(alertVC, animated: true)
+    let wpItem = listingAPIResponse!.items[indexPath.item]
+    let remoteVideoURL = wpItem.videoURL
+    // Ask the user which action to take.
+    let alertVC = UIAlertController(title: wpItem.name, message: wpItem.sizeString, preferredStyle: .alert)
+    // 1. Preview in an AVPlayerViewController.
+    alertVC.addAction(UIAlertAction(title: "Preview", style: .default) { _ in
+      // Use cached video file if available.
+      let videoURL = wpItem.isSaved ? wpItem.videoCacheURL : remoteVideoURL
+      let player = AVPlayer(url: videoURL)
+      let playerVC = AVPlayerViewController()
+      playerVC.player = player
+      self.present(playerVC, animated: true)
+    })
+    // 2. Download.
+    if (wpItem.isSaved) {
+      let action = UIAlertAction(title: "Set", style: .default) { _ in
+        self.chooseVC.didSelectVideo(wpItem.videoCacheURL)
+      }
+      alertVC.addAction(action)
     }
+    else {
+      alertVC.addAction(UIAlertAction(title: "Download", style: .default) { _ in
+        self.downloadVideo(forItem: wpItem)
+      })
+    }
+    // 3. Cancel.
+    alertVC.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    // Present alert.
+    self.present(alertVC, animated: true)
   }
 
   // The action for when the user chooses to download a video.
   // Here we download the video, displaying the progress, and directs the user to set it as wallpaper.
   func downloadVideo(forItem item: ListingAPIResponse.Item) {
     // Present the alert first.
-    let progressAlert = UIAlertController(title: "Downloading", message: "initializing...", preferredStyle: .alert)
+    let progressAlert = UIAlertController(title: "Downloading", message: "preparing...", preferredStyle: .alert)
     present(progressAlert, animated: true)
 
     // Add cancel option.
     progressAlert.addAction(UIAlertAction(title: "Cancel", style: .destructive) { _ in
-      DiggerManager.shared.cancelAllTasks()
+      Downloader.shared.cancel()
     })
 
-    // Func to be called on successful download / found in cache.
-    func downloaded(to url: URL) {
-      progressAlert.dismiss(animated: true) {
-        let nVC = self.navigationController!.viewControllers.count
-        let chooseWallpaperVC = self.navigationController!.viewControllers[nVC - 2] as! ZX2ChooseWallpaperViewController
-        chooseWallpaperVC.didSelectVideo(url)
-      }
-    }
-
     // Now begin download.
-    download(item.videoURL!)
-      .progress { progress in
-        progressAlert.message = "\(Int(progress.fractionCompleted * 100))%"
+    // Hold only a weak ref to the alert as it may be dismissed early.
+    item.save(onProgress: { [weak progressAlert] progress in
+      DispatchQueue.main.async {
+        progressAlert?.message = "\(Int(progress * 100))%"
       }
-      .completion { result in
-        switch result {
-          case let .success(url):
-            downloaded(to: url)
-          case let .failure(err):
-          let error = err as! NSError
-            if error.code == DiggerError.fileIsExist.rawValue,
-              let url = error.userInfo["theFileHasbeenDownloaded"] as? URL {
-              downloaded(to: url)
-            }
-            else {
-              progressAlert.title = "Download Failed"
-              progressAlert.message = error.localizedDescription
-            }
+    }) { [weak progressAlert] error in
+      DispatchQueue.main.async {
+        if error != nil {
+          progressAlert?.title = "Download Failed"
+          progressAlert?.message = error!.localizedDescription
+        }
+        else {
+          progressAlert!.dismiss(animated: true) {
+            self.chooseVC.didSelectVideo(item.videoCacheURL)
+          }
         }
       }
+    }
     
   }
 

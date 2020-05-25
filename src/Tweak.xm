@@ -230,6 +230,7 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
+			NSLog(@"on lockscreen");
 			IS_ON_LOCKSCREEN = true;
 		}
 
@@ -248,6 +249,7 @@ void checkResourceFolder(UIViewController *presenterVC) {
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
 			IS_ON_LOCKSCREEN = false;
+			NSLog(@"off lockscreen");
 			// Additonal check to prevent situations where a shared FRAME is set
 			// and when the user dismisses the cover sheet it doesn't stop playing.
 			if (IS_IN_APP && FRAME.pauseInApps)
@@ -309,7 +311,22 @@ void checkResourceFolder(UIViewController *presenterVC) {
 	
 	// Receivers for fade/unfade notifications.
 	%hook SBIconListView
+		- (void) didMoveToWindow {
+			%orig;
+			if ([self respondsToSelector: @selector(setAlpha:)]) {
+				[NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil];
+			}
+		}
 
+		%new
+		- (void) fade: (NSNotification *) notification {
+			[UIView animateWithDuration: 0.3 animations: ^() {
+				self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0;
+			}];
+		}
+	%end
+
+	%hook SBIconListPageControl
 		- (void) didMoveToWindow {
 			%orig;
 			if ([self respondsToSelector: @selector(setAlpha:)]) {
@@ -450,38 +467,38 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 %end
 
-// Sleep/wake detection for iPads.
-%group iPad
-	// Sleep / wake controls.
-	%hook FBDisplayLayoutTransition
+// // Sleep/wake detection for iPads.
+// %group iPad
+// 	// Sleep / wake controls.
+// 	%hook FBDisplayLayoutTransition
 
-		// More reliable control for sleep / wait.
-		// Accounts for cases where no wake animation is required.
-		-(void) setBacklightLevel: (long long) level {
-			%orig(level);
-			// Determine whether screen is on.
-			bool isAwake = level != 0.0;
-			// Update IS_ASLEEP.
-			IS_ASLEEP = !isAwake;
-		}
+// 		// More reliable control for sleep / wait.
+// 		// Accounts for cases where no wake animation is required.
+// 		-(void) setBacklightLevel: (long long) level {
+// 			%orig(level);
+// 			// Determine whether screen is on.
+// 			bool isAwake = level != 0.0;
+// 			// Update IS_ASLEEP.
+// 			IS_ASLEEP = !isAwake;
+// 		}
 	
-	%end
-%end
+// 	%end
+// %end
 
-// Sleep/wake detection for iPhones.
-%group iPhone
-	%hook SBScreenWakeAnimationController
-		-(void) sleepForSource: (long long)arg1 target: (id)arg2 completion: (id)arg3 {
-			%orig;
-			IS_ASLEEP = true;
-		}
-		// Note that this does not overlap with when coversheet appears.
-		-(void) prepareToWakeForSource: (long long)arg1 timeAlpha: (double)arg2 statusBarAlpha: (double)arg3 target: (id)arg4 completion: (id)arg5 {
-			%orig;
-			IS_ASLEEP = false;
-		}
-	%end
-%end
+// // Sleep/wake detection for iPhones.
+// %group iPhone
+// 	%hook SBScreenWakeAnimationController
+// 		-(void) sleepForSource: (long long)arg1 target: (id)arg2 completion: (id)arg3 {
+// 			%orig;
+// 			IS_ASLEEP = true;
+// 		}
+// 		// Note that this does not overlap with when coversheet appears.
+// 		-(void) prepareToWakeForSource: (long long)arg1 timeAlpha: (double)arg2 statusBarAlpha: (double)arg3 target: (id)arg4 completion: (id)arg5 {
+// 			%orig;
+// 			IS_ASLEEP = false;
+// 		}
+// 	%end
+// %end
 
 void respringCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
 	[[%c(FBSystemService) sharedInstance] exitAndRelaunch: true];
@@ -505,7 +522,7 @@ void createResourceFolder() {
 
 // Main
 %ctor {
-	// dlopen("/usr/lib/LookinServer.framework/LookinServer", RTLD_NOW);
+	dlopen("/usr/lib/LookinServer.framework/LookinServer", RTLD_NOW);
 
 	// Create the resource folder if necessary & update permissions.
 	createResourceFolder();
@@ -516,14 +533,8 @@ void createResourceFolder() {
 		%init(Fallback);
 	}
 
-	if ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-		%init(iPad)
-	}
-	else {
-		%init(iPhone)
-	}
-
-	NSLog(@"[Frame]: Initialized %@", FRAME);
+	// Force the lazy globals to init.
+	NSLog(@"[Frame]: Globals %@", FRAME, DeviceStates.shared);
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
