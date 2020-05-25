@@ -467,39 +467,6 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 %end
 
-// // Sleep/wake detection for iPads.
-// %group iPad
-// 	// Sleep / wake controls.
-// 	%hook FBDisplayLayoutTransition
-
-// 		// More reliable control for sleep / wait.
-// 		// Accounts for cases where no wake animation is required.
-// 		-(void) setBacklightLevel: (long long) level {
-// 			%orig(level);
-// 			// Determine whether screen is on.
-// 			bool isAwake = level != 0.0;
-// 			// Update IS_ASLEEP.
-// 			IS_ASLEEP = !isAwake;
-// 		}
-	
-// 	%end
-// %end
-
-// // Sleep/wake detection for iPhones.
-// %group iPhone
-// 	%hook SBScreenWakeAnimationController
-// 		-(void) sleepForSource: (long long)arg1 target: (id)arg2 completion: (id)arg3 {
-// 			%orig;
-// 			IS_ASLEEP = true;
-// 		}
-// 		// Note that this does not overlap with when coversheet appears.
-// 		-(void) prepareToWakeForSource: (long long)arg1 timeAlpha: (double)arg2 statusBarAlpha: (double)arg3 target: (id)arg4 completion: (id)arg5 {
-// 			%orig;
-// 			IS_ASLEEP = false;
-// 		}
-// 	%end
-// %end
-
 void respringCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
 	[[%c(FBSystemService) sharedInstance] exitAndRelaunch: true];
 }
@@ -534,7 +501,7 @@ void createResourceFolder() {
 	}
 
 	// Force the lazy globals to init.
-	NSLog(@"[Frame]: Globals %@", FRAME, DeviceStates.shared);
+	NSLog(@"[Frame]: Globals %@, %@", FRAME, DeviceStates.shared);
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();

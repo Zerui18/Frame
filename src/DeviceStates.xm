@@ -67,6 +67,9 @@ void rescheduleCountdown();
     // Action for leaving app.
     else {
       // TODO: only reschedule count down if we're not in a folder, check needed
+      SBIconController *ctr = [%c(SBIconController) sharedInstanceIfExists];
+      NSLog(@"iconController: %@", ctr);
+      NSLog(@"open: %@, current: %@", ctr._openFolderController, ctr._currentFolderController);
       rescheduleCountdown();
       [FRAME playHomescreen];
     }

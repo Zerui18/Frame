@@ -1,3 +1,12 @@
+@interface SBIconController
+
++(SBIconController *) sharedInstanceIfExists;
+
+-(id) _openFolderController;
+-(id) _currentFolderController;
+
+@end
+
 // A simple class that tracks device states relevant to Frame.
 // And provides triggers for changes in states.
 

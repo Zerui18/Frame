@@ -11,9 +11,9 @@
     NSUserDefaults *bundleDefaults;
     AVAudioSession *audioSession;
 
-    AVPlayer *sharedPlayer;
-    AVPlayer *lockscreenPlayer;
-    AVPlayer *homescreenPlayer;
+    AVQueuePlayer *sharedPlayer;
+    AVQueuePlayer *lockscreenPlayer;
+    AVQueuePlayer *homescreenPlayer;
 
     bool mutedLockscreen;
     bool mutedHomescreen;

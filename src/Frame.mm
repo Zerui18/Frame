@@ -1,3 +1,4 @@
+#import <objc/runtime.h>
 #import "Frame.h"
 #import "SpringBoard.h"
 #import "DeviceStates.h"
@@ -39,7 +40,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
                                             }];
 
         // set allow mixing
-        audioSession = [%c(AVAudioSession) sharedInstance];
+        audioSession = [AVAudioSession sharedInstance];
         [audioSession setCategory: AVAudioSessionCategoryPlayback withOptions: AVAudioSessionCategoryOptionMixWithOthers error: nil];
         [audioSession addObserver: self forKeyPath: @"outputVolume" options: NSKeyValueObservingOptionNew context: nil];
 
@@ -89,27 +90,18 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
     }
 
     // Helper method that creates a looper-managed AVPlayer and returns the player.
-    - (AVPlayer *) createLoopedPlayerWithURL: (NSURL *) videoURL {
+    - (AVQueuePlayer *) createLoopedPlayerWithURL: (NSURL *) videoURL {
+        // Init player, playerItem and looper.
+        AVQueuePlayer *player = [[AVQueuePlayer alloc] init];
         AVPlayerItem *item = [AVPlayerItem playerItemWithURL: videoURL];
-        AVPlayer *player = [AVPlayer playerWithPlayerItem: item];
+        AVPlayerLooper *looper = [AVPlayerLooper playerLooperWithPlayer: player templateItem: item];
         // Prevent airplay.
         player.allowsExternalPlayback = false;
+        // Allow sleep.
         if (@available(iOS 12, *))
             player.preventsDisplaySleepDuringVideoPlayback = false;
-        // Begin observing for playback ending.
-        __weak AVPlayer *playerWeak = player;
-        [NSNotificationCenter.defaultCenter addObserverForName: AVPlayerItemDidPlayToEndTimeNotification object: nil queue: nil
-            usingBlock: ^(NSNotification *notification){
-            // Prepare for comparison.
-            AVPlayer *playerStrong = playerWeak;
-            AVPlayerItem *item = (AVPlayerItem *) notification.object;
-            // Check if the item belongs to the current player.
-            if (item == playerStrong.currentItem) {
-                // Yes? Seek and play.
-                [playerStrong seekToTime: kCMTimeZero toleranceBefore: kCMTimeZero toleranceAfter: kCMTimeZero];
-                [playerStrong play];
-            }
-        }];
+        // Have the player retain the looper.
+        objc_setAssociatedObject(player, _cmd, looper, OBJC_ASSOCIATION_RETAIN);
         return player;
     }
 
