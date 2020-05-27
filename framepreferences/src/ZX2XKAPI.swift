@@ -19,8 +19,19 @@ public struct ListingAPIResponse: Codable {
         /// Formatted size string.
         public let size: String
 
+        /// Intelligently extract the actual size from the long desc.
         public var sizeString: String {
-            size.split(separator: "\n").first.flatMap(String.init) ?? ""
+            let parts = size.split(separator: "\n")
+            if parts.count == 0 {
+                return "??"
+            }
+            else if parts.count == 1 {
+                return String(parts[0])
+            }
+            // Find the segment containing "MB", or default to the first segment.
+            else {
+                return String(parts.first(where: { $0.contains("MB") }) ?? parts[0])
+            }
         }
         
         /// URL to the video file.

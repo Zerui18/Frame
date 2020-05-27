@@ -8,30 +8,10 @@
 #import "Frame.h"
 #import "UIView+.h"
 #import "DeviceStates.h"
+#import "Checks.h"
 
 // MARK: Main Tweak
 void const *playerLayerKey;
-
-// Check for folder access, otherwise warn user.
-void checkResourceFolder(UIViewController *presenterVC) {
-	NSString *testFile = @"/var/mobile/Documents/com.ZX02.Frame/.test.txt";
-
-	// Try to write to a test file.
-	NSString *str = @"Please do not delete this folder.";
-	NSError *err;
-	[str writeToFile: testFile atomically: true encoding: NSUTF8StringEncoding error: &err];
-
-	if (err != nil) {
-		UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
-													message: @"Resource folder can't be accessed."
-													preferredStyle: UIAlertControllerStyleAlert];
-		[alertVC addAction: [UIAlertAction actionWithTitle: @"Details" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *action) {
-			[[UIApplication sharedApplication] openURL: [NSURL URLWithString: @"https://zerui18.github.io/zx02#err=frame.resAccess"] options:@{} completionHandler: nil];
-		}]];
-		[alertVC addAction: [UIAlertAction actionWithTitle: @"Ignore" style: UIAlertActionStyleCancel handler: nil]];
-		[presenterVC presentViewController: alertVC animated: true completion: nil];
-	}
-}
 
 %group Tweak
 
@@ -64,31 +44,6 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			else if (s.sharedWallpaperView != nil) {
 				setupWallpaperPlayer(s.sharedWallpaperView, false);
 			}
-
-			// We will also check if the user's configuration's erroneous.
-			static bool hasAlerted;
- 			
-			// Alert user if Frame is active and settings is incompatible.
-			if (FRAME.isTweakEnabled) {
-				if ([FRAME requiresDifferentSystemWallpapers] && s.sharedWallpaperView != nil) {
-					// Alert (once).
-					if (hasAlerted) return s;
-					// Setup alertVC and present.
-					UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
-													message: @"You have chosen different videos for lockscreen & homescreen, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect."
-													preferredStyle: UIAlertControllerStyleAlert];
-					[alertVC addAction: [UIAlertAction actionWithTitle: @"Details" style: UIAlertActionStyleDefault handler: ^(UIAlertAction *action) {
-						[[UIApplication sharedApplication] openURL: [NSURL URLWithString: @"https://zerui18.github.io/zx02#err=frame.sysConfig"] options:@{} completionHandler: nil];
-					}]];
-					[alertVC addAction: [UIAlertAction actionWithTitle: @"Ignore" style: UIAlertActionStyleCancel handler: nil]];
-					UIViewController *presenterVC = UIApplication.sharedApplication.windows.firstObject.rootViewController;
-					if (presenterVC != nil) {
-						[presenterVC presentViewController: alertVC animated: true completion: nil], hasAlerted = true;
-						hasAlerted = true;
-					}
-				}
-			}
-
 			return s;
 		}
 	%end
@@ -127,55 +82,6 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			}
 		}
 	
-	%end
-
-	// Rework the blue effect of folders.
-	// By default iOS seems to render the blurred images "manually" (without using UIVisualEffectView)
-	// and using a snapshot of the wallpaper.
-	// The simplest way to adapt this to our video bg is to replace the stock view that renders the blurred image
-	// with an actual UIVisualEffectView
-
-	%hook SBWallpaperEffectView 
-
-		-(void) didMoveToWindow {
-			%orig;
-
-			// Repairs the reachability blur view when activated from the home screen.
-			if (!IS_IN_APP && [self.window isKindOfClass: [%c(SBReachabilityWindow) class]]) {
-				// Remove the stock blur view.
-				self.subviews.firstObject &&
-					(self.subviews.firstObject.hidden = true);
-				UIView *newBlurView;
-				if (@available(iOS 13.0, *))
-					newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleSystemUltraThinMaterial]];
-				else
-					newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleRegular]];
-				newBlurView.frame = self.bounds;
-				[self addSubview: newBlurView];
-				return %orig;
-			}
-
-			// Only apply fix for the following cases:
-			// Wallpaper style 29 -> icon component blur
-			// Wallpaper style 12 -> SBDockView's underlying blur (iOS <= 12)
-			if (self.wallpaperStyle != 29 && self.wallpaperStyle != 12)
-				return;
-			// Hide the stock blur effect render.
-			self.blurView &&
-				self.blurView.subviews.firstObject &&
-					(self.blurView.subviews.firstObject.hidden = true);
-
-			UIView *newBlurView;
-			if (@available(iOS 13.0, *))
-				newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleSystemUltraThinMaterial]];
-			else
-				newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleRegular]];
-			
-			// Add our blur view to self.blurView (system's fake blur).
-			newBlurView.frame = self.blurView.bounds;
-			newBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-			[self.blurView addSubview: newBlurView];
-		}
 	%end
 
 	// Coordinate the Frame with SpringBoard.
@@ -230,7 +136,6 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 		- (void) viewWillAppear: (BOOL) animated {
 			%orig;
-			NSLog(@"on lockscreen");
 			IS_ON_LOCKSCREEN = true;
 		}
 
@@ -243,13 +148,15 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			%orig;
 			if (!FRAME.pauseInApps || !IS_IN_APP) {
 				[FRAME playHomescreen];
+				// Unfade.
+				cancelCountdown();
+				rescheduleCountdown();
 			}
 		}
 
 		- (void) viewDidDisappear: (BOOL) animated {
 			%orig;
 			IS_ON_LOCKSCREEN = false;
-			NSLog(@"off lockscreen");
 			// Additonal check to prevent situations where a shared FRAME is set
 			// and when the user dismisses the cover sheet it doesn't stop playing.
 			if (IS_IN_APP && FRAME.pauseInApps)
@@ -266,12 +173,9 @@ void checkResourceFolder(UIViewController *presenterVC) {
 
 	- (void) viewDidAppear: (bool) animated {
 			%orig;
-			// Here we check the resource folder and alert user if there's an error.
-			static bool checkedFolder = false;
-			if (!checkedFolder) {
-				checkResourceFolder(self);
-				checkedFolder = true;
-			}
+			// Perform checks.
+			checkResourceFolder(self);
+			checkWPSettings(self);
 		}
 		
 		// The countdown timer for debouncing the hide animation for the above VC.
@@ -298,6 +202,8 @@ void checkResourceFolder(UIViewController *presenterVC) {
 		// Begin timer.
 		- (void) viewWillAppear: (bool) animated {
 			%orig;
+			// Unfade.
+			cancelCountdown();
 			rescheduleCountdown();
 		}
 
@@ -311,35 +217,24 @@ void checkResourceFolder(UIViewController *presenterVC) {
 	
 	// Receivers for fade/unfade notifications.
 	%hook SBIconListView
-		- (void) didMoveToWindow {
-			%orig;
-			if ([self respondsToSelector: @selector(setAlpha:)]) {
-				[NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil];
-			}
-		}
-
-		%new
-		- (void) fade: (NSNotification *) notification {
-			[UIView animateWithDuration: 0.3 animations: ^() {
-				self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0;
-			}];
-		}
+	- (void) didMoveToWindow { %orig; [NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil]; }
+	%new
+	- (void) fade: (NSNotification *) notification { [UIView animateWithDuration: 0.3 animations: ^() { self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0; }]; }
 	%end
-
 	%hook SBIconListPageControl
-		- (void) didMoveToWindow {
-			%orig;
-			if ([self respondsToSelector: @selector(setAlpha:)]) {
-				[NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil];
-			}
-		}
-
-		%new
-		- (void) fade: (NSNotification *) notification {
-			[UIView animateWithDuration: 0.3 animations: ^() {
-				self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0;
-			}];
-		}
+	- (void) didMoveToWindow { %orig; [NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil]; }
+	%new
+	- (void) fade: (NSNotification *) notification { [UIView animateWithDuration: 0.3 animations: ^() { self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0; }]; }
+	%end
+	%hook SBDockView
+	- (void) didMoveToWindow { %orig; [NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil]; }
+	%new
+	- (void) fade: (NSNotification *) notification { [UIView animateWithDuration: 0.3 animations: ^() { self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0; }]; }
+	%end
+	%hook SBFloatingDockView
+	- (void) didMoveToWindow { %orig; [NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil]; }
+	%new
+	- (void) fade: (NSNotification *) notification { [UIView animateWithDuration: 0.3 animations: ^() { self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0; }]; }
 	%end
 
 	// Touch-triggered timer delays, intercepted from the horizontal pan gesture recognizer.
@@ -451,6 +346,9 @@ void checkResourceFolder(UIViewController *presenterVC) {
 			%orig;
 			if (!FRAME.pauseInApps || !IS_IN_APP) {
 				[FRAME playHomescreen];
+				// Unfade.
+				cancelCountdown();
+				rescheduleCountdown();
 			}
 		}
 
@@ -463,6 +361,59 @@ void checkResourceFolder(UIViewController *presenterVC) {
 				[FRAME pauseSharedPlayer];
 		}
 
+	%end
+
+%end
+
+%group FixBlur
+
+	// Rework the blur effect of folders.
+	// By default iOS seems to render the blurred images "manually" (without using UIVisualEffectView)
+	// and using a snapshot of the wallpaper.
+	// The simplest way to adapt this to our video bg is to replace the stock view that renders the blurred image
+	// with an actual UIVisualEffectView
+
+	%hook SBWallpaperEffectView 
+
+		-(void) didMoveToWindow {
+			%orig;
+
+			// Repairs the reachability blur view when activated from the home screen.
+			if (!IS_IN_APP && [self.window isKindOfClass: [%c(SBReachabilityWindow) class]]) {
+				// Remove the stock blur view.
+				self.subviews.firstObject &&
+					(self.subviews.firstObject.hidden = true);
+				UIView *newBlurView;
+				if (@available(iOS 13.0, *))
+					newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleSystemUltraThinMaterial]];
+				else
+					newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleRegular]];
+				newBlurView.frame = self.bounds;
+				[self addSubview: newBlurView];
+				return %orig;
+			}
+
+			// Only apply fix for the following cases:
+			// Wallpaper style 29 -> icon component blur
+			// Wallpaper style 12 -> SBDockView's underlying blur (iOS <= 12)
+			if (self.wallpaperStyle != 29 && self.wallpaperStyle != 12)
+				return;
+			// Hide the stock blur effect render.
+			self.blurView &&
+				self.blurView.subviews.firstObject &&
+					(self.blurView.subviews.firstObject.hidden = true);
+
+			UIView *newBlurView;
+			if (@available(iOS 13.0, *))
+				newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleSystemUltraThinMaterial]];
+			else
+				newBlurView = [[UIVisualEffectView alloc] initWithEffect: [UIBlurEffect effectWithStyle: UIBlurEffectStyleRegular]];
+			
+			// Add our blur view to self.blurView (system's fake blur).
+			newBlurView.frame = self.blurView.bounds;
+			newBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+			[self.blurView addSubview: newBlurView];
+		}
 	%end
 
 %end
@@ -489,15 +440,21 @@ void createResourceFolder() {
 
 // Main
 %ctor {
-	dlopen("/usr/lib/LookinServer.framework/LookinServer", RTLD_NOW);
+	// dlopen("/usr/lib/LookinServer.framework/LookinServer", RTLD_NOW);
 
 	// Create the resource folder if necessary & update permissions.
 	createResourceFolder();
 
 	%init(Tweak);
 
+	// iOS 12 and earlier's fallback.
 	if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
 		%init(Fallback);
+	}
+
+	// Enable fix blur if requested.
+	if (FRAME.fixBlur) {
+		%init(FixBlur);
 	}
 
 	// Force the lazy globals to init.

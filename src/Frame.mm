@@ -5,6 +5,7 @@
 #import "Globals.h"
 #import "Utils.h"
 #import "AVPlayerLayer+Listen.h"
+#import "Checks.h"
 
 void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 #define KVC_OBSERVE(keyPath) [bundleDefaults addObserver: self forKeyPath: keyPath options: NSKeyValueObservingOptionNew context: nil]
@@ -36,7 +37,8 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
                                             @"syncRingerVolume" : @true,
                                             @"fadeEnabled" : @false,
                                             @"fadeAlpha" : @0.05,
-                                            @"fadeInactivity" : @4.0
+                                            @"fadeInactivity" : @4.0,
+                                            @"fixBlur" : @false
                                             }];
 
         // set allow mixing
@@ -52,6 +54,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         self.fadeEnabled = [bundleDefaults boolForKey: @"fadeEnabled"];
         self.fadeAlpha = [bundleDefaults floatForKey: @"fadeAlpha"];
         self.fadeInactivity = [bundleDefaults floatForKey: @"fadeInactivity"];
+        self.fixBlur = [bundleDefaults boolForKey: @"fixBlur"];
 
         // begin observing settings changes
         KVC_OBSERVE(@"isEnabled");
@@ -190,6 +193,8 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         ELIF_KEYPATH(@"fadeAlpha", self.fadeAlpha = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];)
 
         ELIF_KEYPATH(@"fadeInactivity", self.fadeInactivity = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];)
+
+        checkWPSettings(nil);
     }
 
     // Setter for pauseInApps.

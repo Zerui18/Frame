@@ -1,5 +1,6 @@
 # sim / iphone
 SIM = 0
+Device = 0
 
 ifeq ($(SIM), 1)
 	DEBUG = 1
@@ -10,6 +11,17 @@ else
 	TARGET = iphone:clang:13.0:12.2.0
 	ARCHS = arm64 arm64e
 	SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
+endif
+
+# iPhone
+ifeq ($(Device), 0)
+	THEOS_DEVICE_IP = 192.168.0.154
+	THEOS_DEVICE_PORT = 22
+endif
+# iPad
+ifeq ($(Device), 1)
+	THEOS_DEVICE_IP = 192.168.0.206
+	THEOS_DEVICE_PORT = 22
 endif
 
 PACKAGE_VERSION = 2.3.0

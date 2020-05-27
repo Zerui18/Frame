@@ -64,13 +64,14 @@ void rescheduleCountdown();
         cancelCountdown();
       }
     }
-    // Action for leaving app.
+    // Action for leaving app / entering homescreen.
     else {
-      // TODO: only reschedule count down if we're not in a folder, check needed
+      // Only reschedule count down if we're not in a folder.
       SBIconController *ctr = [%c(SBIconController) sharedInstanceIfExists];
-      NSLog(@"iconController: %@", ctr);
-      NSLog(@"open: %@, current: %@", ctr._openFolderController, ctr._currentFolderController);
-      rescheduleCountdown();
+      if (ctr._openFolderController == nil) {
+        rescheduleCountdown();
+      }
+      // Play homescreen.
       [FRAME playHomescreen];
     }
   }

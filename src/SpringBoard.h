@@ -18,6 +18,8 @@ DEF_UIVIEW(SBIconScrollView)
 DEF_UIVIEW(SBIconListView)
 DEF_UIVIEW(_UIStatusBar)
 DEF_UIVIEW(SBIconListPageControl)
+DEF_UIVIEW(SBDockView)
+DEF_UIVIEW(SBFloatingDockView)
 
 DEF_UIWINDOW(_SBWallpaperWindow)
 DEF_UIWINDOW(SBCoverSheetWindow)

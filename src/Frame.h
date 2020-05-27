@@ -27,6 +27,7 @@
 @property float fadeInactivity;
 @property(setter=setPauseInApps:, nonatomic) bool pauseInApps;
 @property(setter=setEnabled:, nonatomic) bool enabled;
+@property bool fixBlur;
 
 + (Frame *) shared;
 - (bool) isTweakEnabled;
