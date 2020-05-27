@@ -193,8 +193,6 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         ELIF_KEYPATH(@"fadeAlpha", self.fadeAlpha = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];)
 
         ELIF_KEYPATH(@"fadeInactivity", self.fadeInactivity = [[change valueForKey: NSKeyValueChangeNewKey] floatValue];)
-
-        checkWPSettings(nil);
     }
 
     // Setter for pauseInApps.

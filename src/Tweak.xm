@@ -165,6 +165,8 @@ void const *playerLayerKey;
 
 	%end
 
+	SBHomeScreenViewController *homeScreenVC = nil;
+
 	// The code below is for "Fade".
 
 	// Timer-managed on/off, coupled with hooking SBIconScrollView below.
@@ -173,9 +175,8 @@ void const *playerLayerKey;
 
 	- (void) viewDidAppear: (bool) animated {
 			%orig;
-			// Perform checks.
+			homeScreenVC = self;
 			checkResourceFolder(self);
-			checkWPSettings(self);
 		}
 		
 		// The countdown timer for debouncing the hide animation for the above VC.
@@ -424,6 +425,7 @@ void respringCallback(CFNotificationCenterRef center, void * observer, CFStringR
 
 void videoChangedCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
 	[FRAME reloadPlayers];
+	checkWPSettings(nil);
 }
 
 // Fix permissions for users who've updated Frame.

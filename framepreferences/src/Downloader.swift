@@ -1,3 +1,16 @@
+/// Helper function to create a directory and the intermediate directories at the give URL if not existing.
+func createDirectory(at url: URL) -> Error? {
+  if !FileManager.default.fileExists(atPath: url.path) {
+    do {
+      try FileManager.default.createDirectory(atPath: url.path, withIntermediateDirectories: true, attributes: [.posixPermissions : 511])
+    }
+    catch {
+      return error
+    }
+  }
+  return nil
+}
+
 /// Very simply downloader that handles single downloads.
 public final class Downloader : NSObject, URLSessionDownloadDelegate, URLSessionTaskDelegate {
 
@@ -23,14 +36,9 @@ public final class Downloader : NSObject, URLSessionDownloadDelegate, URLSession
     self.dstURL = dstURL
     // Create the dstURL's containing folder(s) if necessary.
     let dstFolder = dstURL.deletingLastPathComponent()
-    if !FileManager.default.fileExists(atPath: dstFolder.path) {
-      do {
-        try FileManager.default.createDirectory(atPath: dstFolder.path, withIntermediateDirectories: true, attributes: nil)
-      }
-      catch {
-        self.onCompletion?(error)
-        return
-      }
+    if let error = createDirectory(at: dstFolder) {
+      self.onCompletion?(error)
+      return
     }
     
     let request = URLRequest(url: srcURL)
@@ -88,6 +96,13 @@ extension Downloader {
       // Download thumbnail.
       let srcURL = item.imageURL
       let dstURL = item.imageCacheURL
+      // Create directory if necessary.
+      if let error = createDirectory(at: dstURL.deletingLastPathComponent()) {
+        onCompletion(error)
+        return
+      }
+
+      // Download image.
       do {
         let data = try Data(contentsOf: srcURL)
         try data.write(to: dstURL)

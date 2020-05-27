@@ -6,7 +6,7 @@ void presentAlert(UIViewController *presenterVC, NSString *errorMessage, NSStrin
     return;
   // Try to find a presenterVC if provided with nil.
   if (presenterVC == nil)
-    presenterVC = UIApplication.sharedApplication.windows.firstObject.rootViewController;
+    presenterVC = homeScreenVC;
   UIAlertController *alertVC = [UIAlertController alertControllerWithTitle: @"Frame - Tweak"
                                 message: errorMessage
                                 preferredStyle: UIAlertControllerStyleAlert];
@@ -42,6 +42,8 @@ static bool checkWPSettingsAlerted = false;
 void checkWPSettings(UIViewController *presenterVC) {
   SBWallpaperController *ctr = [%c(SBWallpaperController) sharedInstance];
   if ([FRAME requiresDifferentSystemWallpapers] && ctr.sharedWallpaperView != nil) {
+    // Always present this alert.
+    checkWPSettingsAlerted = false;
     presentAlert(presenterVC, @"You have chosen different videos for lockscreen & homescreen, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect.", @"frame.sysConfig", &checkWPSettingsAlerted);
   }
 }
