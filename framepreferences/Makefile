@@ -6,7 +6,7 @@ BUNDLE_NAME = framepreferences
 
 # manually add library search paths from toolchain
 # also use dead_strip linker option to prevent linking unnecessary code and causing error 
-framepreferences_LDFLAGS += -L/usr/lib/swift -L./ -lwebpdecoder -dead_strip
+framepreferences_LDFLAGS += -L/usr/lib/swift -L/opt/theos/include/ -L./ -lwebpdecoder -dead_strip
 framepreferences_FRAMEWORKS = UIKit MobileCoreServices AVFoundation
 framepreferences_FILES = src/WebP/WebPDataDecoder.m $(wildcard src/Digger/*.swift) $(wildcard src/WebP/*.swift) $(wildcard src/*m) $(wildcard src/Nuke/*.swift) $(wildcard src/*.swift)
 framepreferences_INSTALL_PATH = /Library/PreferenceBundles

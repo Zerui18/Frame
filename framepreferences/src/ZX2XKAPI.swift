@@ -1,5 +1,45 @@
-import Foundation
+// MARK: Crypto Configs
+fileprivate let iv = Data(repeating: 0, count: 16)
+fileprivate let key = sha256(data: "9i98X0OxViK1oJhyHnOAUKRMAdHy8jy2Ik8Xv6xJ5A4oRDLD".data(using: .ascii)!)
+fileprivate let aes = AES(key: key, iv: iv)
 
+fileprivate func decryptAndUnzip(data: Data) -> Data? {
+    Data(base64Encoded: data)
+        .flatMap {
+            aes.decrypt(data: $0)
+        }
+        .flatMap {
+            Data(base64Encoded: $0)
+        }.flatMap {
+            try? $0.gunzipped()
+        }
+}
+
+fileprivate func fetchAndDecode<T: Codable>(from url: URL, completion: @escaping (T?, Error?) -> Void) {
+    URLSession.shared.dataTask(with: url) { (data, _, error) in
+        if error != nil {
+            completion(nil, error)
+        }
+        else {
+            do {
+                // First decrypt the data.
+                guard let decryptedData = decryptAndUnzip(data: data!) else {
+                    let err = NSError(domain: "com.zx02.frameprefs", code: 0, userInfo: [NSLocalizedDescriptionKey : "Failed to decrypt data."])
+                    completion(nil, err)
+                    return
+                }
+                // Then decode as object.
+                let object = try JSONDecoder().decode(T.self, from: decryptedData)
+                completion(object, nil)
+            }
+            catch {
+                completion(nil, error)
+            }
+        }
+    }.resume()
+}
+
+// MARK: Actual API
 protocol ListingItemRepresentable {
     var imageURL: URL { get }
     var name: String { get }
@@ -40,7 +80,7 @@ public struct ListingAPIResponse: Codable {
         }
         
         /// URL to the webp thumbnail image.
-        public var imageURL: URL { 
+        public var imageURL: URL {
             URL(string: ipath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)!
         }
 
@@ -54,9 +94,9 @@ public struct ListingAPIResponse: Codable {
 
         /// Save the thumbnail image and then downloads the video to the cache path.
         /// Performs cleanup if fails at any stage.
-        public func save(onProgress block: @escaping (Float) -> Void, onCompletion callback: @escaping (Error?) -> Void) {
-            Downloader.shared.download(self, onProgress: block, onCompletion: callback)
-        }
+       public func save(onProgress block: @escaping (Float) -> Void, onCompletion callback: @escaping (Error?) -> Void) {
+           Downloader.shared.download(self, onProgress: block, onCompletion: callback)
+       }
 
         /// Checks if this item has been saved.
         public var isSaved: Bool {
@@ -105,24 +145,18 @@ public struct IndexAPIResponse: Codable {
         
         /// Fetch the listing of this category with a completion handler.
         public func fetchListing(completion: @escaping (ListingAPIResponse?, Error?)-> Void) {
-            URLSession.shared.dataTask(with: url!) { (data, _, error) in
-                if error != nil {
+            fetchAndDecode(from: url!) { (data: ListingAPIResponse?, error) in
+                guard error == nil else {
                     completion(nil, error)
+                    return
                 }
-                else {
-                    do {
-                        var response = try JSONDecoder().decode(ListingAPIResponse.self, from: data!)
-                        // Remove the update notice.
-                        if response.items.first?.size == "32.78MB" {
-                            response.items.remove(at: 0)
-                        }
-                        completion(response, nil)
-                    }
-                    catch {
-                        completion(nil, error)
-                    }
+                var response = data!
+                // Remove the update notice.
+                if response.items.first?.size == "32.78MB" {
+                    response.items.remove(at: 0)
                 }
-            }.resume()
+                completion(response, nil)
+            }
         }
     }
     
@@ -136,23 +170,17 @@ public struct IndexAPIResponse: Codable {
     public let allURL: String
     
     /// Convenience method to fetch a new response given a completion callback, optionally specifying an overriding api url.
-    public static func fetch(from url: URL = URL(string: "https://api-20200209.xkspbz.com/index.json")!,
+    public static func fetch(from url: URL = URL(string: "http://api-20200527.xkspbz.com/admin.json")!,
                             completion: @escaping (IndexAPIResponse?, Error?)-> Void) {
-        URLSession.shared.dataTask(with: url) { (data, _, error) in
-            if error != nil {
+        fetchAndDecode(from: url) { (object: IndexAPIResponse?, error) in
+            guard error == nil else {
                 completion(nil, error)
+                return
             }
-            else {
-                do {
-                    var response = try JSONDecoder().decode(IndexAPIResponse.self, from: data!)
-                    response.items.removeAll { filteredNames.contains($0.name) }
-                    completion(response, nil)
-                }
-                catch {
-                    completion(nil, error)
-                }
-            }
-        }.resume()
+            var response = object!
+            response.items.removeAll { filteredNames.contains($0.name) }
+            completion(response, nil)
+        }
     }
     
 }

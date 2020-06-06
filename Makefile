@@ -15,8 +15,8 @@ endif
 
 # iPhone
 ifeq ($(Device), 0)
-	THEOS_DEVICE_IP = 192.168.0.154
-	THEOS_DEVICE_PORT = 22
+	THEOS_DEVICE_IP = localhost
+	THEOS_DEVICE_PORT = 2222
 endif
 # iPad
 ifeq ($(Device), 1)
@@ -24,7 +24,7 @@ ifeq ($(Device), 1)
 	THEOS_DEVICE_PORT = 22
 endif
 
-PACKAGE_VERSION = 2.3.0
+PACKAGE_VERSION = 2.3.1
 
 INSTALL_TARGET_PROCESSES = SpringBoard
 frame_FRAMEWORKS = Foundation UIKit AVFoundation
