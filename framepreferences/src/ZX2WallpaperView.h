@@ -1,4 +1,5 @@
 #import <AVFoundation/AVFoundation.h>
+#import <UIKit/UIKit.h>
 
 @class ZX2ChooseWallpaperViewController;
 

@@ -30,6 +30,7 @@
 @property bool fixBlur;
 
 + (Frame *) shared;
+- (instancetype) init;
 - (bool) isTweakEnabled;
 - (void) destroyPlayers;
 - (void) reloadPlayers;

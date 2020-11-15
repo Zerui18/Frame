@@ -13,7 +13,7 @@
 // MARK: Main Tweak
 void const *playerLayerKey;
 
-%group Tweak
+%group Common
 
 	// Helper function that sets up wallpaper FRAME in the given wallpaperView.
 	void setupWallpaperPlayer(SBFWallpaperView *wallpaperView, bool isLockscreenView) {
@@ -32,19 +32,34 @@ void const *playerLayerKey;
 	}
 
 	%hook SBWallpaperController
+
 		// Point of setup for wallpaper players.
 		+ (id) sharedInstance {
-			SBWallpaperController *s = %orig;
+			SBWallpaperController *ctr = %orig;
+			// iOS 14.x
+			SBWallpaperViewController *vc = MSHookIvar<SBWallpaperViewController *>(ctr, "_wallpaperViewController");
+
+			SBFWallpaperView *ls, *hs, *both;
+			if (vc) {
+				ls = vc.lockscreenWallpaperView;
+				hs = vc.homescreenWallpaperView;
+				both = vc.sharedWallpaperView;
+			}
+			else {
+				ls = ctr.lockscreenWallpaperView;
+				hs = ctr.homescreenWallpaperView;
+				both = ctr.sharedWallpaperView;
+			}
 
 			// We don't need to ensure singular call as the setup function checks if the provided view has been configured.
-			if (s.lockscreenWallpaperView != nil && s.homescreenWallpaperView != nil) {
-				setupWallpaperPlayer(s.lockscreenWallpaperView, true);
-				setupWallpaperPlayer(s.homescreenWallpaperView, false);
+			if (ls != nil && hs != nil) {
+				setupWallpaperPlayer(ls, true);
+				setupWallpaperPlayer(hs, false);
 			}
-			else if (s.sharedWallpaperView != nil) {
-				setupWallpaperPlayer(s.sharedWallpaperView, false);
+			else if (both != nil) {
+				setupWallpaperPlayer(both, false);
 			}
-			return s;
+			return ctr;
 		}
 	%end
 
@@ -447,11 +462,19 @@ void createResourceFolder() {
 	// Create the resource folder if necessary & update permissions.
 	createResourceFolder();
 
-	%init(Tweak);
+	%init(Common);
 
 	// iOS 12 and earlier's fallback.
-	if ([[[UIDevice currentDevice] systemVersion] floatValue] < 13.0) {
+	if (UIDevice.currentDevice.systemVersion.floatValue < 13.0) {
 		%init(Fallback);
+	}
+	else if (UIDevice.currentDevice.systemVersion.floatValue >= 14.0) {
+		// iOS 14.x
+
+	}
+	else {
+		// iOS 13.x
+		
 	}
 
 	// Enable fix blur if requested.

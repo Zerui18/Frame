@@ -18,21 +18,22 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         static Frame *shared = nil;
         static dispatch_once_t onceToken;
         dispatch_once_on_main_thread(&onceToken, ^{
-            shared = [[Frame alloc] init];
+            shared = [Frame alloc];
+            shared = [shared init];
         });
         return shared;
     }
 
     // Init.
-    - (id) init {
+    - (instancetype) init {
         self = [super init];
 
         // get user defaults & set default values
         bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
         [bundleDefaults registerDefaults: @{ @"isEnabled" : @true,
                                             @"disableOnLPM" : @true,
-                                            @"mutedLockscreen" : @true,
-                                            @"mutedHomescreen" : @true,
+                                            @"mutedLockscreen" : @false,
+                                            @"mutedHomescreen" : @false,
                                             @"pauseInApps" : @true,
                                             @"syncRingerVolume" : @true,
                                             @"fadeEnabled" : @false,
@@ -95,7 +96,8 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
     // Helper method that creates a looper-managed AVPlayer and returns the player.
     - (AVQueuePlayer *) createLoopedPlayerWithURL: (NSURL *) videoURL {
         // Init player, playerItem and looper.
-        AVQueuePlayer *player = [[AVQueuePlayer alloc] init];
+        AVQueuePlayer *player = [AVQueuePlayer alloc];
+        player = [player init];
         AVPlayerItem *item = [AVPlayerItem playerItemWithURL: videoURL];
         AVPlayerLooper *looper = [AVPlayerLooper playerLooperWithPlayer: player templateItem: item];
         // Prevent airplay.

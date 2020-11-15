@@ -29,6 +29,12 @@ DEF_UIVC(CSCoverSheetViewController)
 DEF_UIVC(SBDashBoardViewController)
 DEF_UIVC(SBHomeScreenViewController)
 
+@interface SBWallpaperViewController
+    @property(retain, nonatomic) SBFWallpaperView *sharedWallpaperView;
+    @property(retain, nonatomic) SBFWallpaperView *homescreenWallpaperView;
+    @property(retain, nonatomic) SBFWallpaperView *lockscreenWallpaperView;
+@end
+
 // Category for getting the parent view controller of the receiver view.
 // https://stackoverflow.com/a/24590678
 @interface UIView (mxcl)

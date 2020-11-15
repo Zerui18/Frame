@@ -8,7 +8,11 @@ void rescheduleCountdown();
 @implementation DeviceStates
 
   + (DeviceStates *) shared {
-    static DeviceStates *instance = [[DeviceStates alloc] init];
+    static DeviceStates *instance;
+    if (!instance) {
+      instance = [DeviceStates alloc];
+      instance = [instance init];
+    }
     return instance;
   }
 
@@ -24,7 +28,7 @@ void rescheduleCountdown();
                               &notifyToken,
                               dispatch_get_main_queue(), ^(int t) {
                                 notify_get_state(notifyToken, &state);
-                                IS_ASLEEP = state != 0;
+                               IS_ASLEEP = state != 0;
                               });
     return self;
   }

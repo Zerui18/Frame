@@ -1,7 +1,7 @@
 #import "ZX2RootListController.h"
 #import "ZX2ChooseWallpaperViewController.h"
 #import "Globals.h"
-#import <framepreferences-Swift.h>
+#include <framepreferences-Swift.h>
 
 // Check for folder access, otherwise warn user.
 void checkResourceFolder(UIViewController *presenterVC) {

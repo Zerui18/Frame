@@ -1,3 +1,5 @@
+#import <UIKit/UIKit.h>
+
 NSUserDefaults *bundleDefaultsShared;
 UIImage *mutedIcon;
 UIImage *unmutedIcon;
