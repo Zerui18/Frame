@@ -36,8 +36,15 @@ void const *playerLayerKey;
 		// Point of setup for wallpaper players.
 		+ (id) sharedInstance {
 			SBWallpaperController *ctr = %orig;
+
+			if (ctr == nil)
+				return nil;
+			
+			SBWallpaperViewController *vc;
+
 			// iOS 14.x
-			SBWallpaperViewController *vc = MSHookIvar<SBWallpaperViewController *>(ctr, "_wallpaperViewController");
+			if (%c(SBWallpaperViewController) != nil) // Safety check before MSHookIvar
+				vc = MSHookIvar<SBWallpaperViewController *>(ctr, "_wallpaperViewController");
 
 			SBFWallpaperView *ls, *hs, *both;
 			if (vc) {
