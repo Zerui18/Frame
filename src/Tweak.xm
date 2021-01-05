@@ -9,6 +9,7 @@
 #import "UIView+.h"
 #import "DeviceStates.h"
 #import "Checks.h"
+#import "echo.h"
 
 // MARK: Main Tweak
 void const *playerLayerKey;
@@ -51,6 +52,7 @@ void const *playerLayerKey;
 				ls = vc.lockscreenWallpaperView;
 				hs = vc.homescreenWallpaperView;
 				both = vc.sharedWallpaperView;
+				echo(@"found wallpaper view controller with views: %@, %@, %@", ls, hs, both);
 			}
 			else {
 				ls = ctr.lockscreenWallpaperView;
@@ -474,14 +476,6 @@ void createResourceFolder() {
 	// iOS 12 and earlier's fallback.
 	if (UIDevice.currentDevice.systemVersion.floatValue < 13.0) {
 		%init(Fallback);
-	}
-	else if (UIDevice.currentDevice.systemVersion.floatValue >= 14.0) {
-		// iOS 14.x
-
-	}
-	else {
-		// iOS 13.x
-		
 	}
 
 	// Enable fix blur if requested.

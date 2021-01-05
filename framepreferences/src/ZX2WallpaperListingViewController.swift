@@ -4,7 +4,7 @@ import AVKit
 /// Execute once dlopen for libwebpdecoder.a which is linked to our code.
 fileprivate let loadWebpOnce : Void = {
   let bundle = Bundle(for: ZX2WallpaperListingViewController.self)
-  if let libwebpPath = bundle.path(forResource: "libwebpdecoder", ofType: "a") {
+  if let libwebpPath = bundle.path(forResource: "libwebpdecoder", ofType: "dylib") {
     dlopen(libwebpPath, RTLD_NOW)
     WebPImageDecoder.enable()
   }

@@ -2,6 +2,7 @@
 #import "ZX2ChooseWallpaperViewController.h"
 #import "Globals.h"
 #include <framepreferences-Swift.h>
+#include <Webkit/Webkit.h>
 
 // Check for folder access, otherwise warn user.
 void checkResourceFolder(UIViewController *presenterVC) {
@@ -58,6 +59,12 @@ void checkResourceFolder(UIViewController *presenterVC) {
 	- (void) presentChooseVC {
 		PSViewController *vc = [[ZX2ChooseWallpaperViewController alloc] init];
 		[self pushController: vc animate: true];
+	}
+
+	- (void) openDonations {
+		[UIApplication.sharedApplication
+			openURL: [NSURL URLWithString: @"https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=4D66KSC8XTUJC"]
+			options: @{} completionHandler: ^(bool _){}];
 	}
 
 @end

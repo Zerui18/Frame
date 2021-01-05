@@ -30,7 +30,8 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 
         // get user defaults & set default values
         bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
-        [bundleDefaults registerDefaults: @{ @"isEnabled" : @true,
+        [bundleDefaults registerDefaults: @{
+                                            @"isEnabled" : @true,
                                             @"disableOnLPM" : @true,
                                             @"mutedLockscreen" : @true,
                                             @"mutedHomescreen" : @true,
