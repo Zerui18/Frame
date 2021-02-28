@@ -24,7 +24,7 @@ rootControlfile = """
 Package: com.zx02.frame.legacy
 Name: Frame (Legacy)
 Depends: ${LIBSWIFT}, mobilesubstrate,preferenceloader,firmware (>= 11.0),firmware (<= 12.1.9)
-Version: 2.4.0
+Version: 2.4.1
 Architecture: iphoneos-arm
 Description: (For iOS < 12.2) Bring your iDevice to life with true video wallpapers.
 Maintainer: Zerui Chen

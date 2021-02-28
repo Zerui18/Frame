@@ -9,14 +9,14 @@ ifeq ($(SIM), 1)
 	SYSROOT = /Users/zeruichen/theos/sdks/iPhoneSimulator11.2.sdk
 else
 	TARGET = iphone:clang:latest:13.0
-	ARCHS = arm64 arm64e
+	ARCHS = arm64e
 	SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
 endif
 
 # iPhone
 ifeq ($(Device), 0)
-	THEOS_DEVICE_IP = localhost
-	THEOS_DEVICE_PORT = 2222
+	THEOS_DEVICE_IP = 192.168.0.112
+	THEOS_DEVICE_PORT = 22
 endif
 # iPad
 ifeq ($(Device), 1)
@@ -24,7 +24,7 @@ ifeq ($(Device), 1)
 	THEOS_DEVICE_PORT = 22
 endif
 
-PACKAGE_VERSION = 2.4.1
+PACKAGE_VERSION = 2.4.2
 
 INSTALL_TARGET_PROCESSES = SpringBoard
 frame_FRAMEWORKS = Foundation UIKit AVFoundation

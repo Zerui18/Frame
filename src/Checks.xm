@@ -40,8 +40,18 @@ void checkResourceFolder(UIViewController *presenterVC) {
 static bool checkWPSettingsAlerted = false;
 
 void checkWPSettings(UIViewController *presenterVC) {
+  bool shouldAlert = [FRAME requiresDifferentSystemWallpapers];
   SBWallpaperController *ctr = [%c(SBWallpaperController) sharedInstance];
-  if ([FRAME requiresDifferentSystemWallpapers] && ctr.sharedWallpaperView != nil) {
+  // iOS 14.x
+	if (%c(SBWallpaperViewController) != nil) {
+    SBWallpaperViewController *vc = MSHookIvar<SBWallpaperViewController *>(ctr, "_wallpaperViewController");
+    shouldAlert &= vc.sharedWallpaperView != nil;
+  }
+  // iOS 13 and below
+  else {
+    shouldAlert &= ctr.sharedWallpaperView != nil;
+  }
+  if (shouldAlert) {
     // Always present this alert.
     checkWPSettingsAlerted = false;
     presentAlert(presenterVC, @"You have chosen different videos for lockscreen & homescreen, but you will need to set different system wallpapers for lockscreen & homescreen for this to take effect.", @"frame.sysConfig", &checkWPSettingsAlerted);
