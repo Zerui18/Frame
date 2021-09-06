@@ -43,6 +43,8 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
                                             @"fixBlur" : @false
                                             }];
 
+        NSLog(@"Frame enabled: %@", [bundleDefaults objectForKey: @"isEnabled"]);
+
         // set allow mixing
         audioSession = [AVAudioSession sharedInstance];
         [audioSession setCategory: AVAudioSessionCategoryPlayback withOptions: AVAudioSessionCategoryOptionMixWithOthers error: nil];
@@ -121,20 +123,20 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         [self destroyPlayers];
 
         // Recreate players from preferences.
-        NSURL *sharedVideoURL = [bundleDefaults URLForKey: @"videoURL"];
+        NSURL *sharedVideoURL = [bundleDefaults URLForKey: @"videoPath"];
         if (sharedVideoURL != nil) {
             sharedPlayer = [self createLoopedPlayerWithURL: sharedVideoURL];
             POST_PLAYER_CHANGED((@{ @"screen" : kBothscreens, @"player" : sharedPlayer }));
         }
         else {
-            NSURL *lockscreenVideoURL = [bundleDefaults URLForKey: @"videoURLLockscreen"];
+            NSURL *lockscreenVideoURL = [bundleDefaults URLForKey: @"lockscreen.videoPath"];
             if (lockscreenVideoURL != nil) {
                 lockscreenPlayer = [self createLoopedPlayerWithURL: lockscreenVideoURL];
                 lockscreenPlayer.muted = mutedLockscreen;
                 POST_PLAYER_CHANGED((@{ @"screen" : kLockscreen, @"player" : lockscreenPlayer }));
             }
 
-            NSURL *homescreenVideoURL = [bundleDefaults URLForKey: @"videoURLHomescreen"];
+            NSURL *homescreenVideoURL = [bundleDefaults URLForKey: @"homescreen.videoPath"];
             if (homescreenVideoURL != nil) {
                 homescreenPlayer = [self createLoopedPlayerWithURL: homescreenVideoURL];
                 homescreenPlayer.muted = mutedHomescreen;

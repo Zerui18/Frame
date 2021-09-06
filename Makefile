@@ -8,8 +8,8 @@ ifeq ($(SIM), 1)
 	ARCHS = x86_64
 	SYSROOT = /Users/zeruichen/theos/sdks/iPhoneSimulator11.2.sdk
 else
-	TARGET = iphone:clang:latest:13.0
-	ARCHS = arm64e
+	TARGET = iphone:clang:latest:13.5
+	ARCHS = arm64 arm64e
 	SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
 endif
 
@@ -24,7 +24,7 @@ ifeq ($(Device), 1)
 	THEOS_DEVICE_PORT = 22
 endif
 
-PACKAGE_VERSION = 2.4.2
+PACKAGE_VERSION = 3.0.0
 
 INSTALL_TARGET_PROCESSES = SpringBoard
 frame_FRAMEWORKS = Foundation UIKit AVFoundation
@@ -38,8 +38,8 @@ frame_CFLAGS = -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
-ifeq ($(SIM), 0)
-	SUBPROJECTS += framepreferences
-	SUBPROJECTS += framecli
-	include $(THEOS_MAKE_PATH)/aggregate.mk
-endif
+# ifeq ($(SIM), 0)
+# 	SUBPROJECTS += framepreferences
+# 	SUBPROJECTS += framecli
+# 	include $(THEOS_MAKE_PATH)/aggregate.mk
+# endif

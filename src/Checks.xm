@@ -1,5 +1,6 @@
 #import "Checks.h"
 #import "Frame.h"
+#import <substrate.h>
 
 void presentAlert(UIViewController *presenterVC, NSString *errorMessage, NSString *errorCode, bool *hasAlerted) {
   if (*hasAlerted)
@@ -21,20 +22,20 @@ void presentAlert(UIViewController *presenterVC, NSString *errorMessage, NSStrin
   }
 }
 
-static bool checkResourceAlerted = false;
+// static bool checkResourceAlerted = false;
 
 // Check for folder access, otherwise warn user.
 void checkResourceFolder(UIViewController *presenterVC) {
-	NSString *testFile = @"/var/mobile/Documents/com.ZX02.Frame/.test.txt";
+	// NSString *testFile = @"/var/mobile/Documents/com.ZX02.Frame/.test.txt";
 
-	// Try to write to a test file.
-	NSString *str = @"Please do not delete this folder.";
-	NSError *err;
-	[str writeToFile: testFile atomically: true encoding: NSUTF8StringEncoding error: &err];
+	// // Try to write to a test file.
+	// NSString *str = @"Please do not delete this folder.";
+	// NSError *err;
+	// [str writeToFile: testFile atomically: true encoding: NSUTF8StringEncoding error: &err];
 
-	if (err != nil) {
-    presentAlert(presenterVC, @"Resource folder can't be accessed.", @"frame.resAccess", &checkResourceAlerted);
-	}
+	// if (err != nil) {
+  //   presentAlert(presenterVC, @"Resource folder can't be accessed.", @"frame.resAccess", &checkResourceAlerted);
+	// }
 }
 
 static bool checkWPSettingsAlerted = false;

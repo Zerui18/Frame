@@ -52,15 +52,15 @@ void setVideoURL(NSURL *videoURLOri, NSString *key, NSUserDefaults *bundleDefaul
 			return;
 	}
 
-	NSString *completeKeyPath = [@"videoURL" stringByAppendingString: key];
+	NSString *completeKeyPath = [key stringByAppendingString: @"videoPath"];
 		
-	NSURL *sharedVideoURL = [bundleDefaults URLForKey: @"videoURL"];
+	NSURL *sharedVideoURL = [bundleDefaults URLForKey: @"videoPath"];
 	// Update videoURLs by cases.
 	if (sharedVideoURL != nil) {
 		// Previously set shared video.
 		if ([key isEqualToString: kBothscreens]) {
 			// Override if setting a new shared video.
-			[bundleDefaults setURL: videoURL forKey: @"videoURL"];
+			[bundleDefaults setURL: videoURL forKey: @"videoPath"];
 		}
 		else {
 			// Else make the original shared video the key other than the specified key.

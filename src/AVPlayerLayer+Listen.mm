@@ -36,10 +36,7 @@ void const *screenKey;
         originalWPView.hidden = newPlayer != nil;
 
         if (newPlayer != nil) {
-          // Delay to allow the layer to "rest", thus preventing it from not rendering anything when the actual player plays.
-          dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            self.player = newPlayer;
-          });
+          self.player = newPlayer;
         }
 
       }

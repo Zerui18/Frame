@@ -452,24 +452,8 @@ void videoChangedCallback(CFNotificationCenterRef center, void * observer, CFStr
 	checkWPSettings(nil);
 }
 
-// Fix permissions for users who've updated Frame.
-void createResourceFolder() {
-	NSURL *frameFolder = [NSURL fileURLWithPath: @"/var/mobile/Documents/com.ZX02.Frame/"];
-
-	// Create frame's folder.
-	if (![NSFileManager.defaultManager fileExistsAtPath: frameFolder.path isDirectory: nil])
-		if (![NSFileManager.defaultManager createDirectoryAtPath: frameFolder.path withIntermediateDirectories: YES attributes: nil error: nil])
-			return;
-  
-	[NSFileManager.defaultManager setAttributes: @{ NSFilePosixPermissions: @511 } ofItemAtPath: frameFolder.path error: nil];
-}
-
 // Main
 %ctor {
-	// dlopen("/usr/lib/LookinServer.framework/LookinServer", RTLD_NOW);
-
-	// Create the resource folder if necessary & update permissions.
-	createResourceFolder();
 
 	%init(Common);
 
@@ -488,6 +472,6 @@ void createResourceFolder() {
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-	CFNotificationCenterAddObserver(center, nil, respringCallback, CFSTR("com.zx02.framepreferences.respring"), nil, nil);
-	CFNotificationCenterAddObserver(center, nil, videoChangedCallback, CFSTR("com.zx02.framepreferences.videoChanged"), nil, nil);
+	CFNotificationCenterAddObserver(center, nil, respringCallback, CFSTR("com.zx02.frame.respring"), nil, nil);
+	CFNotificationCenterAddObserver(center, nil, videoChangedCallback, CFSTR("com.zx02.frame.videoChanged"), nil, nil);
 }
