@@ -9,7 +9,7 @@ ifeq ($(SIM), 1)
 	SYSROOT = /Users/zeruichen/theos/sdks/iPhoneSimulator11.2.sdk
 else
 	TARGET = iphone:clang:latest:13.0
-	ARCHS = arm64e
+	ARCHS = arm64 arm64e
 	SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
 endif
 
@@ -24,7 +24,7 @@ ifeq ($(Device), 1)
 	THEOS_DEVICE_PORT = 22
 endif
 
-PACKAGE_VERSION = 2.4.2
+PACKAGE_VERSION = 2.4.3
 
 INSTALL_TARGET_PROCESSES = SpringBoard
 frame_FRAMEWORKS = Foundation UIKit AVFoundation

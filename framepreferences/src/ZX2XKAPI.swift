@@ -42,7 +42,7 @@ fileprivate func fetchAndDecode<T: Codable>(from url: URL, completion: @escaping
 // MARK: Actual API
 protocol ListingItemRepresentable {
     var imageURL: URL { get }
-    var name: String { get }
+    var name: String! { get }
     var sizeString: String { get }
 }
 
@@ -55,7 +55,7 @@ public struct ListingAPIResponse: Codable {
         let ipath: String
         
         /// Display name.
-        public let name: String
+        public let name: String!
         /// Formatted size string.
         public let size: String
 
@@ -120,7 +120,7 @@ public struct ListingAPIResponse: Codable {
 }
 
 /// The english translation for the important category names.
-fileprivate let englishNames = ["最新" : "Latest", "推荐" : "Recommended", "景观" : "Landscapes", "动漫" : "Anime", "游戏" : "Games", "其它" : "Abstract"]
+fileprivate let englishNames = ["首页" : "Home", "最新" : "New", "推荐" : "Hot", "随机" : "Random", "景观" : "Landscapes", "动漫" : "Anime", "游戏" : "Games", "其它" : "Abstract"]
 
 /// The categories to be filtered out.
 fileprivate let filteredNames = ["小姐姐", "再淘一下", "公告"]
@@ -155,6 +155,7 @@ public struct IndexAPIResponse: Codable {
                 if response.items.first?.size == "32.78MB" {
                     response.items.remove(at: 0)
                 }
+                response.items.removeAll { $0.name == nil }
                 completion(response, nil)
             }
         }
@@ -170,7 +171,7 @@ public struct IndexAPIResponse: Codable {
     public let allURL: String
     
     /// Convenience method to fetch a new response given a completion callback, optionally specifying an overriding api url.
-    public static func fetch(from url: URL = URL(string: "http://api-20200527.xkspbz.com/admin.json")!,
+    public static func fetch(from url: URL = URL(string: "http://api-20200527.xkspbz.com/admin-n.json")!,
                             completion: @escaping (IndexAPIResponse?, Error?)-> Void) {
         fetchAndDecode(from: url) { (object: IndexAPIResponse?, error) in
             guard error == nil else {
@@ -187,7 +188,7 @@ public struct IndexAPIResponse: Codable {
 
 // MARK: CachedWallpaper
 struct CachedWallpaper : Equatable, ListingItemRepresentable {
-  let name: String
+  let name: String!
   let size: UInt64
 
   var imageURL: URL {
