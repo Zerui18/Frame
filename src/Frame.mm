@@ -33,10 +33,10 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         [bundleDefaults registerDefaults: @{
                                             @"isEnabled" : @true,
                                             @"disableOnLPM" : @true,
-                                            @"mutedLockscreen" : @true,
-                                            @"mutedHomescreen" : @true,
+                                            @"lockscreen.muted" : @true,
+                                            @"homescreen.muted" : @true,
                                             @"pauseInApps" : @true,
-                                            @"syncRingerVolume" : @true,
+                                            @"syncRingerVolume" : @false,
                                             @"fadeEnabled" : @false,
                                             @"fadeAlpha" : @0.05,
                                             @"fadeInactivity" : @4.0,
@@ -51,8 +51,6 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         [audioSession addObserver: self forKeyPath: @"outputVolume" options: NSKeyValueObservingOptionNew context: nil];
 
         disableOnLPM = [bundleDefaults boolForKey: @"disableOnLPM"];
-        mutedLockscreen = [bundleDefaults boolForKey: @"mutedLockscreen"];
-        mutedHomescreen = [bundleDefaults boolForKey: @"mutedHomescreen"];
         self.pauseInApps = [bundleDefaults boolForKey: @"pauseInApps"];
         syncRingerVolume = [bundleDefaults boolForKey: @"syncRingerVolume"];
         self.fadeEnabled = [bundleDefaults boolForKey: @"fadeEnabled"];
@@ -60,16 +58,20 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         self.fadeInactivity = [bundleDefaults floatForKey: @"fadeInactivity"];
         self.fixBlur = [bundleDefaults boolForKey: @"fixBlur"];
 
+        mutedLockscreen = [bundleDefaults boolForKey: @"lockscreen.muted"];
+        mutedHomescreen = [bundleDefaults boolForKey: @"homescreen.muted"];
+
         // begin observing settings changes
         KVC_OBSERVE(@"isEnabled");
         KVC_OBSERVE(@"disableOnLPM");
-        KVC_OBSERVE(@"mutedLockscreen");
-        KVC_OBSERVE(@"mutedHomescreen");
         KVC_OBSERVE(@"pauseInApps");
         KVC_OBSERVE(@"syncRingerVolume");
         KVC_OBSERVE(@"fadeEnabled");
         KVC_OBSERVE(@"fadeAlpha");
         KVC_OBSERVE(@"fadeInactivity");
+
+        KVC_OBSERVE(@"lockscreen.muted");
+        KVC_OBSERVE(@"homescreen.muted");
 
         // Set enabled after initializing all other properties.
         self.enabled = self.isTweakEnabled;
@@ -173,9 +175,9 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 
         ELIF_KEYPATH(@"disableOnLPM", disableOnLPM = changeInBool;)
 
-        ELIF_KEYPATH(@"mutedLockscreen", mutedLockscreen = lockscreenPlayer.muted = changeInBool;)
+        ELIF_KEYPATH(@"lockscreen.muted", mutedLockscreen = lockscreenPlayer.muted = changeInBool;)
 
-        ELIF_KEYPATH(@"mutedHomescreen", mutedHomescreen = homescreenPlayer.muted = changeInBool;)
+        ELIF_KEYPATH(@"homescreen.muted", mutedHomescreen = homescreenPlayer.muted = changeInBool;)
 
         ELIF_KEYPATH(@"pauseInApps", self.pauseInApps = changeInBool;)
 
