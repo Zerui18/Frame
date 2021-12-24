@@ -24,7 +24,7 @@ ifeq ($(Device), 1)
 	THEOS_DEVICE_PORT = 22
 endif
 
-PACKAGE_VERSION = 2.4.3
+PACKAGE_VERSION = 2.4.4
 
 INSTALL_TARGET_PROCESSES = SpringBoard
 frame_FRAMEWORKS = Foundation UIKit AVFoundation

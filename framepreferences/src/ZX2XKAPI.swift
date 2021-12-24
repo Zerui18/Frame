@@ -85,11 +85,11 @@ public struct ListingAPIResponse: Codable {
         }
 
         public var videoCacheURL: URL {
-            URL(fileURLWithPath: "/var/mobile/Documents/com.ZX02.Frame/Cache/Videos/\(name).mp4")
+            URL(fileURLWithPath: "/var/mobile/Documents/com.ZX02.Frame/Cache/Videos/\(name!).mp4")
         }
 
         public var imageCacheURL: URL {
-            URL(fileURLWithPath: "/var/mobile/Documents/com.ZX02.Frame/Cache/Thumbs/\(name).webp")
+            URL(fileURLWithPath: "/var/mobile/Documents/com.ZX02.Frame/Cache/Thumbs/\(name!).webp")
         }
 
         /// Save the thumbnail image and then downloads the video to the cache path.
@@ -192,10 +192,10 @@ struct CachedWallpaper : Equatable, ListingItemRepresentable {
   let size: UInt64
 
   var imageURL: URL {
-    URL(fileURLWithPath: "/var/mobile/Documents/com.ZX02.Frame/Cache/Thumbs/\(name).webp")
+    URL(fileURLWithPath: "/var/mobile/Documents/com.ZX02.Frame/Cache/Thumbs/\(name!).webp")
   }
   var videoURL: URL {
-    URL(fileURLWithPath: "/var/mobile/Documents/com.ZX02.Frame/Cache/Videos/\(name).mp4")
+    URL(fileURLWithPath: "/var/mobile/Documents/com.ZX02.Frame/Cache/Videos/\(name!).mp4")
   }
   var sizeString: String {
     ByteCountFormatter.string(fromByteCount: Int64(self.size), countStyle: .file)
