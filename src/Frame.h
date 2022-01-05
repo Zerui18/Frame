@@ -15,6 +15,7 @@
     AVQueuePlayer *lockscreenPlayer;
     AVQueuePlayer *homescreenPlayer;
 
+    bool mutedBoth;
     bool mutedLockscreen;
     bool mutedHomescreen;
     bool syncRingerVolume;

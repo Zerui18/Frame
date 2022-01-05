@@ -38,8 +38,8 @@ frame_CFLAGS = -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
-# ifeq ($(SIM), 0)
+ifeq ($(SIM), 0)
 # 	SUBPROJECTS += framepreferences
-# 	SUBPROJECTS += framecli
-# 	include $(THEOS_MAKE_PATH)/aggregate.mk
-# endif
+	SUBPROJECTS += framecli
+	include $(THEOS_MAKE_PATH)/aggregate.mk
+endif

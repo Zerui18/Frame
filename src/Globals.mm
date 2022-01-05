@@ -1,5 +1,5 @@
 #import "Globals.h"
 
-NSString *const kLockscreen = @"Lockscreen";
-NSString *const kHomescreen = @"Homescreen";
-NSString *const kBothscreens = @"";
+NSString *const kLockscreen = @"lockscreen";
+NSString *const kHomescreen = @"homescreen";
+NSString *const kBothscreens = @"both";

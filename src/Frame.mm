@@ -33,8 +33,8 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         [bundleDefaults registerDefaults: @{
                                             @"isEnabled" : @true,
                                             @"disableOnLPM" : @true,
-                                            @"lockscreen.muted" : @true,
-                                            @"homescreen.muted" : @true,
+                                            @"lockscreen/isMuted" : @true,
+                                            @"homescreen/isMuted" : @true,
                                             @"pauseInApps" : @true,
                                             @"syncRingerVolume" : @false,
                                             @"fadeEnabled" : @false,
@@ -58,8 +58,9 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         self.fadeInactivity = [bundleDefaults floatForKey: @"fadeInactivity"];
         self.fixBlur = [bundleDefaults boolForKey: @"fixBlur"];
 
-        mutedLockscreen = [bundleDefaults boolForKey: @"lockscreen.muted"];
-        mutedHomescreen = [bundleDefaults boolForKey: @"homescreen.muted"];
+        mutedBoth = [bundleDefaults boolForKey: @"both/isMuted"];
+        mutedLockscreen = [bundleDefaults boolForKey: @"lockscreen/isMuted"];
+        mutedHomescreen = [bundleDefaults boolForKey: @"homescreen/isMuted"];
 
         // begin observing settings changes
         KVC_OBSERVE(@"isEnabled");
@@ -70,8 +71,9 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         KVC_OBSERVE(@"fadeAlpha");
         KVC_OBSERVE(@"fadeInactivity");
 
-        KVC_OBSERVE(@"lockscreen.muted");
-        KVC_OBSERVE(@"homescreen.muted");
+        KVC_OBSERVE(@"both/isMuted");
+        KVC_OBSERVE(@"lockscreen/isMuted");
+        KVC_OBSERVE(@"homescreen/isMuted");
 
         // Set enabled after initializing all other properties.
         self.enabled = self.isTweakEnabled;
@@ -99,7 +101,8 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
     }
 
     // Helper method that creates a looper-managed AVPlayer and returns the player.
-    - (AVQueuePlayer *) createLoopedPlayerWithURL: (NSURL *) videoURL {
+    - (AVQueuePlayer *) createLoopedPlayerWithPath: (NSString *) videoPath {
+        NSURL *videoURL = [NSURL fileURLWithPath: videoPath];
         // Init player, playerItem and looper.
         AVQueuePlayer *player = [AVQueuePlayer alloc];
         player = [player init];
@@ -125,22 +128,22 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         [self destroyPlayers];
 
         // Recreate players from preferences.
-        NSURL *sharedVideoURL = [bundleDefaults URLForKey: @"videoPath"];
-        if (sharedVideoURL != nil) {
-            sharedPlayer = [self createLoopedPlayerWithURL: sharedVideoURL];
+        NSString *sharedVideoPath = [bundleDefaults stringForKey: @"both/videoPath"];
+        if (sharedVideoPath != nil) {
+            sharedPlayer = [self createLoopedPlayerWithPath: sharedVideoPath];
             POST_PLAYER_CHANGED((@{ @"screen" : kBothscreens, @"player" : sharedPlayer }));
         }
         else {
-            NSURL *lockscreenVideoURL = [bundleDefaults URLForKey: @"lockscreen.videoPath"];
-            if (lockscreenVideoURL != nil) {
-                lockscreenPlayer = [self createLoopedPlayerWithURL: lockscreenVideoURL];
+            NSString *lockscreenVideoPath = [bundleDefaults stringForKey: @"lockscreen/videoPath"];
+            if (lockscreenVideoPath != nil) {
+                lockscreenPlayer = [self createLoopedPlayerWithPath: lockscreenVideoPath];
                 lockscreenPlayer.muted = mutedLockscreen;
                 POST_PLAYER_CHANGED((@{ @"screen" : kLockscreen, @"player" : lockscreenPlayer }));
             }
 
-            NSURL *homescreenVideoURL = [bundleDefaults URLForKey: @"homescreen.videoPath"];
-            if (homescreenVideoURL != nil) {
-                homescreenPlayer = [self createLoopedPlayerWithURL: homescreenVideoURL];
+            NSString *homescreenVideoPath = [bundleDefaults stringForKey: @"homescreen/videoPath"];
+            if (homescreenVideoPath != nil) {
+                homescreenPlayer = [self createLoopedPlayerWithPath: homescreenVideoPath];
                 homescreenPlayer.muted = mutedHomescreen;
                 POST_PLAYER_CHANGED((@{ @"screen" : kHomescreen, @"player" : homescreenPlayer }));
             }
@@ -175,9 +178,11 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 
         ELIF_KEYPATH(@"disableOnLPM", disableOnLPM = changeInBool;)
 
-        ELIF_KEYPATH(@"lockscreen.muted", mutedLockscreen = lockscreenPlayer.muted = changeInBool;)
+        ELIF_KEYPATH(@"lockscreen/isMuted", mutedLockscreen = lockscreenPlayer.muted = changeInBool;)
 
-        ELIF_KEYPATH(@"homescreen.muted", mutedHomescreen = homescreenPlayer.muted = changeInBool;)
+        ELIF_KEYPATH(@"homescreen/isMuted", mutedHomescreen = homescreenPlayer.muted = changeInBool;)
+
+        ELIF_KEYPATH(@"both/isMuted", mutedBoth = sharedPlayer.muted = changeInBool;)
 
         ELIF_KEYPATH(@"pauseInApps", self.pauseInApps = changeInBool;)
 
@@ -253,7 +258,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
     - (void) playLockscreen {
         // Update muted property if sharedPlayer is being used.
         if (sharedPlayer != nil) {
-            sharedPlayer.muted = mutedLockscreen;
+            sharedPlayer.muted = mutedBoth;
             [sharedPlayer play];
         }
         else
@@ -262,7 +267,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 
     - (void) playHomescreen {
         if (sharedPlayer != nil){
-            sharedPlayer.muted = mutedHomescreen;
+            sharedPlayer.muted = mutedBoth;
             [sharedPlayer play];
         }
         else
