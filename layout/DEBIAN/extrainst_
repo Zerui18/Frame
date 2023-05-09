@@ -1,0 +1,2 @@
+#!/var/jb/usr/bin/bash
+echo -e '**👋🏻 Welcome to Frame!**\n👉🏻 Open the [Frame] app on your homescreen to begin, enjoy!'
