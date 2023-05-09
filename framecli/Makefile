@@ -3,7 +3,7 @@ include $(THEOS)/makefiles/common.mk
 TOOL_NAME = framecli
 
 ARCHS = arm64 arm64e
-SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.0.sdk
+SYSROOT = /Users/zeruichen/theos/sdks/iPhoneOS13.7.sdk
 BUNDLE_NAME = framepreferences
 
 framecli_INSTALL_PATH = /usr/bin

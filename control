@@ -1,7 +1,7 @@
 Package: com.zx02.frame
 Name: Frame
-Depends: mobilesubstrate,firmware (>= 12.1.9)
-Version: 3.0.0
+Depends: mobilesubstrate,firmware (>= 12.9.9)
+Version: 3.0.0-2
 Architecture: iphoneos-arm
 Description: Bring your iDevice to life with true video wallpapers.
 Maintainer: Zerui Chen

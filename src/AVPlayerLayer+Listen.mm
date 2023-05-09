@@ -8,7 +8,7 @@ void const *screenKey;
 
   // Getter & setter for self.screen.
   - (NSString *) getScreen {
-    return (NSString *) objc_getAssociatedObject(self, &screenKey);
+    return objc_getAssociatedObject(self, &screenKey);
   }
 
   - (void) setScreen: (NSString *) screen {
@@ -23,7 +23,6 @@ void const *screenKey;
       // Check if this notification is meant for this layer.
       NSString *screen = [notification.userInfo objectForKey: @"screen"];
       if ([screen isEqualToString: kBothscreens] || [screen isEqualToString: self.screen]) {
-        self.player = nil;
 
         // Get the newPlayer.
         AVPlayer *newPlayer = (AVPlayer *)[notification.userInfo objectForKey: @"player"];
@@ -35,14 +34,11 @@ void const *screenKey;
         UIView *originalWPView = (UIView *) [self valueForKey: @"originalWPView"];
         originalWPView.hidden = newPlayer != nil;
 
-        if (newPlayer != nil) {
-          self.player = newPlayer;
-        }
+        self.player = newPlayer;
 
       }
 
     }];
   }
-
 
 @end

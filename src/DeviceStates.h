@@ -1,4 +1,8 @@
-@interface SBIconController
+#import <UIKit/UIKit.h>
+
+@interface SBIconController : UIViewController
+
+@property (nonatomic, retain) UIView *contentView;
 
 +(SBIconController *) sharedInstanceIfExists;
 

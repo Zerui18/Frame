@@ -5,7 +5,6 @@
 #import "Globals.h"
 #import "Utils.h"
 #import "AVPlayerLayer+Listen.h"
-#import "Checks.h"
 
 void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
 #define KVC_OBSERVE(keyPath) [bundleDefaults addObserver: self forKeyPath: keyPath options: NSKeyValueObservingOptionNew context: nil]
@@ -28,6 +27,8 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
     - (instancetype) init {
         self = [super init];
 
+        NSLog(@"[Frame] Hello from Frame! Begin initialization...");
+
         // get user defaults & set default values
         bundleDefaults = [[NSUserDefaults alloc] initWithSuiteName: @"com.Zerui.framepreferences"];
         [bundleDefaults registerDefaults: @{
@@ -43,7 +44,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
                                             @"fixBlur" : @false
                                             }];
 
-        NSLog(@"Frame enabled: %@", [bundleDefaults objectForKey: @"isEnabled"]);
+        NSLog(@"[Frame] Frame enabled: %@", [bundleDefaults objectForKey: @"isEnabled"]);
 
         // set allow mixing
         audioSession = [AVAudioSession sharedInstance];
@@ -87,6 +88,8 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
             // update "enabled" based on lpm status
             self.enabled = self.isTweakEnabled;
         }];
+
+        NSLog(@"[Frame] Main Module Initialized!");
     
         return self;
     }
@@ -111,8 +114,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         // Prevent airplay.
         player.allowsExternalPlayback = false;
         // Allow sleep.
-        if (@available(iOS 12, *))
-            player.preventsDisplaySleepDuringVideoPlayback = false;
+        player.preventsDisplaySleepDuringVideoPlayback = false;
         // Have the player retain the looper.
         objc_setAssociatedObject(player, _cmd, looper, OBJC_ASSOCIATION_RETAIN);
         return player;
@@ -249,7 +251,7 @@ void cancelCountdown(); // cancel home screen fade countdown (see Tweak.xm)
         superview.contentView.hidden = player != nil;
         [playerLayer listenForPlayerChangedNotification];
         playerLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
-        [superview.layer addSublayer: playerLayer];
+        [superview.layer insertSublayer: playerLayer atIndex: 0];
         playerLayer.frame = superview.bounds;
 
         return playerLayer;

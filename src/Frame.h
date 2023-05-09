@@ -35,7 +35,7 @@
 - (bool) isTweakEnabled;
 - (void) destroyPlayers;
 - (void) reloadPlayers;
-- (AVPlayerLayer *) addInView: (SBFWallpaperView *) superview isLockscreen: (bool) isLockscreen;
+- (AVPlayerLayer *) addInView: (UIView *) superview isLockscreen: (bool) isLockscreen;
 - (void) playHomescreen;
 - (void) forcePlayHomescreen;
 - (void) playLockscreen;

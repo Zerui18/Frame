@@ -2,64 +2,94 @@
 #import <version.h>
 #import <substrate.h>
 #import <dlfcn.h>
-#import "FBSystemService.h"
 #import "SpringBoard.h"
 #import "Globals.h"
 #import "Frame.h"
 #import "UIView+.h"
 #import "DeviceStates.h"
-#import "Checks.h"
-#import "echo.h"
 
-// MARK: Main Tweak
+#pragma mark - Global Vars
 void const *playerLayerKey;
+SBHomeScreenViewController *homeScreenVC = nil;
+// The countdown timer for the fade animation.
+NSTimer *timer;
 
-%group Common
+#pragma mark - Global Functions
 
-	// Helper function that sets up wallpaper FRAME in the given wallpaperView.
-	void setupWallpaperPlayer(SBFWallpaperView *wallpaperView, bool isLockscreenView) {
-		// Attempts to retrieve associated AVPlayerLayer.
-		AVPlayerLayer *playerLayer = (AVPlayerLayer *) objc_getAssociatedObject(wallpaperView, &playerLayerKey);
-		
-		// No existing playerLayer? Init
-		if (playerLayer == nil) {
-
-			// Setup FRAME.
-			// Note: Don't add wallpaperView into .contentView as it's irregularly framed.
-			playerLayer = [FRAME addInView: wallpaperView isLockscreen: isLockscreenView];
-			objc_setAssociatedObject(wallpaperView, &playerLayerKey, playerLayer, OBJC_ASSOCIATION_RETAIN);
-
-		}
+// Helper function that sets up wallpaper FRAME in the given wallpaperView.
+void setupWallpaperPlayer(SBFWallpaperView *wallpaperView, bool isLockscreenView) {
+	// Attempt to retrieve associated AVPlayerLayer.
+	AVPlayerLayer *playerLayer = (AVPlayerLayer *) objc_getAssociatedObject(wallpaperView, &playerLayerKey);
+	
+	// No existing playerLayer? Init
+	if (playerLayer == nil) {
+		playerLayer = [FRAME addInView: wallpaperView isLockscreen: isLockscreenView];
+		// Save playerLayer as an associated object of the wallpaperView.
+		objc_setAssociatedObject(wallpaperView, &playerLayerKey, playerLayer, OBJC_ASSOCIATION_RETAIN);
 	}
+}
 
+void adjustWallpaperPlayer(SBFWallpaperView *wallpaperView) {
+	// Attempt to retrieve associated playerLayer.
+	AVPlayerLayer *playerLayer = (AVPlayerLayer *) objc_getAssociatedObject(wallpaperView, &playerLayerKey);
+	if (!playerLayer) return;
+	// Adjust playerLayer to fit the wallpaperView.
+	playerLayer.frame = wallpaperView.bounds;
+}
+
+// Functions to implement a debounced timer for the fade animation.
+void rescheduleCountdown() {
+	if (FRAME.enabled && FRAME.fadeEnabled) {
+		[timer invalidate];
+		timer = [NSTimer scheduledTimerWithTimeInterval: FRAME.fadeInactivity repeats: false block: ^(NSTimer *timer) {
+			[NSNotificationCenter.defaultCenter postNotificationName: @"Fade" object: @true userInfo: nil];
+		}];
+		[NSRunLoop.currentRunLoop addTimer: timer forMode: NSDefaultRunLoopMode];
+	}
+}
+
+void cancelCountdown() {
+	if (FRAME.enabled && FRAME.fadeEnabled) {
+		[timer invalidate];
+		timer = nil;
+		[NSNotificationCenter.defaultCenter postNotificationName: @"Fade" object: @false userInfo: nil];
+	}
+}
+
+#pragma mark - Tweak
+%group Main
+
+	#pragma mark - Tweak: Add Player Layer
 	%hook SBWallpaperController
 
 		// Point of setup for wallpaper players.
 		+ (id) sharedInstance {
 			SBWallpaperController *ctr = %orig;
 
-			if (ctr == nil)
-				return nil;
+			if (!ctr) return nil;
 			
-			SBWallpaperViewController *vc;
-
-			// iOS 14.x
-			if (%c(SBWallpaperViewController) != nil) // Safety check before MSHookIvar
-				vc = MSHookIvar<SBWallpaperViewController *>(ctr, "_wallpaperViewController");
-
+			// Obtain wallpaper views.
 			SBFWallpaperView *ls, *hs, *both;
-			if (vc) {
+			if (%c(SBWWallpaperViewController)) {
+				// iOS 15.x
+				SBWWallpaperViewController *vc = MSHookIvar<SBWWallpaperViewController *>(ctr, "_wallpaperViewController");
 				ls = vc.lockscreenWallpaperView;
 				hs = vc.homescreenWallpaperView;
 				both = vc.sharedWallpaperView;
-				echo(@"found wallpaper view controller with views: %@, %@, %@", ls, hs, both);
+			}
+			else if (%c(SBWallpaperController)) {
+				// iOS 14.x
+				SBWallpaperViewController *vc = MSHookIvar<SBWallpaperViewController *>(ctr, "_wallpaperViewController");
+				ls = vc.lockscreenWallpaperView;
+				hs = vc.homescreenWallpaperView;
+				both = vc.sharedWallpaperView;
 			}
 			else {
+				// iOS 13.x
 				ls = ctr.lockscreenWallpaperView;
 				hs = ctr.homescreenWallpaperView;
 				both = ctr.sharedWallpaperView;
 			}
-
 			// We don't need to ensure singular call as the setup function checks if the provided view has been configured.
 			if (ls != nil && hs != nil) {
 				setupWallpaperPlayer(ls, true);
@@ -74,47 +104,50 @@ void const *playerLayerKey;
 
 	%hook SBFWallpaperView
 
-		- (void) layoutSubviews {
+		- (void) willMoveToWindow: (UIWindow *) window {
 			%orig;
-
-			// Insert point for coversheet window, which is not covered by the SBWallpaperController hook.
-			if ([self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
+			// Setup wallpaper player.
+			// Only do this for coversheet window, which is not covered by the SBWallpaperController hook.
+			if ([window isKindOfClass: [%c(SBCoverSheetWindow) class]]) {
 				setupWallpaperPlayer(self, true);
 			}
+		}
 
-			// General operation of re-positioning the playerLayer.
-			// Attempts to retrieve associated AVPlayerLayer.
-			AVPlayerLayer *playerLayer = (AVPlayerLayer *) objc_getAssociatedObject(self, &playerLayerKey);
+		- (void) layoutSubviews {
+			%orig;
+			if (!self.window || ![self.window isKindOfClass: [%c(SBCoverSheetWindow) class]]) return;
 
-			if (playerLayer != nil) {
-				// Send playerLayer to front and match its frame to that of the current view.
-				// Note: for compatibility with SpringArtwork, we let SAViewController's view's layer stay atop :)
-				CALayer *saLayer;
-				for (UIView *view in self.subviews) {
-					if ([view.nextResponder isKindOfClass: [%c(SAViewController) class]]) {
-						saLayer = view.layer;
-						break;
-					}
+			// Send playerLayer to front and match its frame to that of the current view.
+			// Note: for compatibility with SpringArtwork, we let SAViewController's view's layer stay atop :)
+			AVPlayerLayer *playerLayer = objc_getAssociatedObject(self, &playerLayerKey);
+
+			// Remove playerLayer from its current superlayer.
+			[playerLayer removeFromSuperlayer];
+
+			// Find SAViewController's view's layer.
+			CALayer *saLayer;
+			for (UIView *view in self.subviews) {
+				if ([view.nextResponder isKindOfClass: [%c(SAViewController) class]]) {
+					saLayer = view.layer;
+					break;
 				}
-				
-				if (saLayer != nil)
-					[self.layer insertSublayer: playerLayer below: saLayer];
-				else
-					[self.layer addSublayer: playerLayer];
-
-				playerLayer.frame = self.bounds;
 			}
+			
+			// Re-add playerLayer.
+			if (saLayer != nil)
+				[self.layer insertSublayer: playerLayer below: saLayer];
+			else
+				[self.layer addSublayer: playerLayer];
+			
+			// Adjust playerLayer to fit the wallpaperView.
+			playerLayer.frame = self.bounds;
 		}
 	
 	%end
 
-	// Coordinate the Frame with SpringBoard.
-	// Pause FRAME when an application opens.
-	// Resume FRAME when the homescreen is shown.
+	#pragma mark - Tweak: Coordination
 
 	%hook SpringBoard
-		void cancelCountdown(); // cancel home screen fade countdown (see far below)
-		void rescheduleCountdown();
 
 		// Rather reliable mechanism for tracking IS_IN_APP.
 		- (void) frontDisplayDidChange: (id) newDisplay {
@@ -189,39 +222,11 @@ void const *playerLayerKey;
 
 	%end
 
-	SBHomeScreenViewController *homeScreenVC = nil;
-
-	// The code below is for "Fade".
-
-	// Timer-managed on/off, coupled with hooking SBIconScrollView below.
-	// Also resource folder access checking.
 	%hook SBHomeScreenViewController
 
 	- (void) viewDidAppear: (bool) animated {
 			%orig;
 			homeScreenVC = self;
-			checkResourceFolder(self);
-		}
-		
-		// The countdown timer for debouncing the hide animation for the above VC.
-		NSTimer *timer;
-
-		// Functions.
-		void rescheduleCountdown() {
-			if (FRAME.enabled && FRAME.fadeEnabled) {
-				[timer invalidate];
-				timer = [NSTimer scheduledTimerWithTimeInterval: FRAME.fadeInactivity repeats: false block: ^(NSTimer *timer) {
-					[NSNotificationCenter.defaultCenter postNotificationName: @"Fade" object: @true userInfo: nil];
-				}];
-				[NSRunLoop.currentRunLoop addTimer: timer forMode: NSDefaultRunLoopMode];
-			}
-		}
-		void cancelCountdown() {
-			if (FRAME.enabled && FRAME.fadeEnabled) {
-				[timer invalidate];
-				timer = nil;
-				[NSNotificationCenter.defaultCenter postNotificationName: @"Fade" object: @false userInfo: nil];
-			}
 		}
 
 		// Begin timer.
@@ -240,7 +245,7 @@ void const *playerLayerKey;
 
 	%end
 	
-	// Receivers for fade/unfade notifications.
+	#pragma mark - Tweak: Fade Listeners
 	%hook SBIconListView
 	- (void) didMoveToWindow { %orig; [NSNotificationCenter.defaultCenter addObserver: self selector: @selector(fade:) name: @"Fade" object: nil]; }
 	%new
@@ -262,6 +267,7 @@ void const *playerLayerKey;
 	- (void) fade: (NSNotification *) notification { [UIView animateWithDuration: 0.3 animations: ^() { self.alpha = [notification.object boolValue] ? FRAME.fadeAlpha : 1.0; }]; }
 	%end
 
+	#pragma mark - Tweak: More Fade Triggers
 	// Touch-triggered timer delays, intercepted from the horizontal pan gesture recognizer.
 	%hook SBIconScrollView
 
@@ -347,49 +353,6 @@ void const *playerLayerKey;
 
 %end
 
-// Group of iOS < 13 specific hooks.
-%group Fallback
-
-	// Achieves the same effect as hooking CSCoverSheet, but on iOS <= 12.
-	%hook SBDashBoardViewController
-
-		// The cases for play/pause are divided into the will/did appear/disappear methods,
-		// to ensure that the wallpaper will begin playing as early as possible
-		// and stop playing as late as possible.
-
-		- (void) viewWillAppear: (BOOL) animated {
-			%orig;
-			IS_ON_LOCKSCREEN = true;
-		}
-
-		- (void) viewDidAppear: (BOOL) animated {
-			%orig;
-			[FRAME pauseHomescreen];
-		}
-
-		- (void) viewWillDisappear: (BOOL) animated {
-			%orig;
-			if (!FRAME.pauseInApps || !IS_IN_APP) {
-				[FRAME playHomescreen];
-				// Unfade.
-				cancelCountdown();
-				rescheduleCountdown();
-			}
-		}
-
-		- (void) viewDidDisappear: (BOOL) animated {
-			%orig;
-			IS_ON_LOCKSCREEN = false;
-			// Additonal check to prevent situations where a shared FRAME is set
-			// and when the user dismisses the cover sheet it doesn't stop playing.
-			if (IS_IN_APP && FRAME.pauseInApps)
-				[FRAME pauseSharedPlayer];
-		}
-
-	%end
-
-%end
-
 %group FixBlur
 
 	// Rework the blur effect of folders.
@@ -443,35 +406,39 @@ void const *playerLayerKey;
 
 %end
 
-void respringCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
-	[[%c(FBSystemService) sharedInstance] exitAndRelaunch: true];
-}
+%group Empty
+%end
 
 void videoChangedCallback(CFNotificationCenterRef center, void * observer, CFStringRef name, void const * object, CFDictionaryRef userInfo) {
 	[FRAME reloadPlayers];
-	checkWPSettings(nil);
 }
 
 // Main
 %ctor {
 
-	%init(Common);
+	%init(Empty);
+	%init(Main);
 
-	// iOS 12 and earlier's fallback.
-	if (UIDevice.currentDevice.systemVersion.floatValue < 13.0) {
-		%init(Fallback);
+	if (false) {
+		%init(FixBlur);
 	}
 
 	// Enable fix blur if requested.
-	if (FRAME.fixBlur) {
-		%init(FixBlur);
-	}
+	// if (FRAME.fixBlur) {
+	// 	%init(FixBlur);
+	// }
 
 	// Force the lazy globals to init.
 	NSLog(@"[Frame]: Globals %@, %@", FRAME, DeviceStates.shared);
 
 	// Listen for respring requests from pref.
 	CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
-	CFNotificationCenterAddObserver(center, nil, respringCallback, CFSTR("com.zx02.frame.respring"), nil, nil);
 	CFNotificationCenterAddObserver(center, nil, videoChangedCallback, CFSTR("com.zx02.frame.videoChanged"), nil, nil);
+
+	dlopen("/var/jb/Library/LookinServer.framework/LookinServer", RTLD_NOW);
+	// log error if any
+	char *error = dlerror();
+	if (error != NULL) {
+		NSLog(@"[Frame]: Error loading LookinServer: %s", error);
+	}
 }

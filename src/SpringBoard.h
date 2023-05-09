@@ -20,6 +20,7 @@ DEF_UIVIEW(_UIStatusBar)
 DEF_UIVIEW(SBIconListPageControl)
 DEF_UIVIEW(SBDockView)
 DEF_UIVIEW(SBFloatingDockView)
+DEF_UIVIEW(SBIconView)
 
 DEF_UIWINDOW(_SBWallpaperWindow)
 DEF_UIWINDOW(SBCoverSheetWindow)
@@ -30,6 +31,12 @@ DEF_UIVC(SBDashBoardViewController)
 DEF_UIVC(SBHomeScreenViewController)
 
 @interface SBWallpaperViewController
+    @property(retain, nonatomic) SBFWallpaperView *sharedWallpaperView;
+    @property(retain, nonatomic) SBFWallpaperView *homescreenWallpaperView;
+    @property(retain, nonatomic) SBFWallpaperView *lockscreenWallpaperView;
+@end
+
+@interface SBWWallpaperViewController
     @property(retain, nonatomic) SBFWallpaperView *sharedWallpaperView;
     @property(retain, nonatomic) SBFWallpaperView *homescreenWallpaperView;
     @property(retain, nonatomic) SBFWallpaperView *lockscreenWallpaperView;
